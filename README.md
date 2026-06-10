@@ -18,14 +18,20 @@ para os dados finalizados.
 - **Etapa 1:** Data Lake Base (object storage + banco relacional)
 - **Etapa 2:** Origem dos Dados e Geração de Massa (Python + Faker)
 - **Etapa 3:** Orquestração e Camada Landing
-- **Etapa 4:** Camada Bronze — Limpeza e Padronização (issue #6)
+- **Etapa 4:** Transformação Spark — Bronze e Silver (issue #6)
 
-## Camada Bronze (Etapa 4)
+## Transformação Spark (Etapa 4)
 
-Converte os CSVs da Landing em Parquet, padronizando colunas e tratando
-duplicatas/nulos, preservando a origem de cada registro.
+Scripts em **PySpark** que populam as camadas Bronze e Silver em formato
+**Delta Lake**:
+
+- `landing_to_bronze.py`: lê os CSVs da Landing e grava na Bronze (Delta),
+  com rastreabilidade da origem.
+- `bronze_to_silver.py`: lê a Bronze, faz limpeza/tratamento (padronização
+  de colunas, duplicatas e nulos) e grava na Silver (Delta).
 
 ```bash
 pip install -r requirements.txt
-python src/bronze/landing_to_bronze.py
+python src/spark/landing_to_bronze.py
+python src/spark/bronze_to_silver.py
 ```
