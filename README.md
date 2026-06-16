@@ -1,118 +1,63 @@
-# data-pipeline
+# Data Pipeline
 
-## Estrutura do Banco
+Pipeline de **engenharia de dados** construído sobre um Data Lake com
+**arquitetura medalhão** (Landing → Bronze → Silver → Gold), incluindo geração
+de massa de dados, orquestração, transformação com Apache Spark e
+disponibilização dos dados em um banco relacional para análise.
 
-```mermaid
-erDiagram
-    Usuarios ||--o{ Pedidos : realiza
-    Usuarios ||--o{ Enderecos : possui
-    Usuarios ||--o{ Avaliacoes : escreve
-    Usuarios ||--o{ Carrinho : possui
+## Arquitetura
 
-    Pedidos ||--|{ Pedido_Itens : contem
-    Pedidos ||--|| Pagamentos : pago_por
-    Pedidos ||--|| Envio : enviado_para
-
-    Produtos ||--o{ Pedido_Itens : incluido_em
-    Produtos ||--o{ Avaliacoes : recebe
-    Produtos ||--o{ Carrinho : adicionado_ao
-
-    Categorias ||--o{ Produtos : categoriza
-
-    Enderecos ||--o{ Envio : utilizado_em
-
-    Usuarios {
-        int id PK
-        string nome
-        string email
-    }
-
-    Produtos {
-        int id PK
-        string nome
-        string descricao
-        decimal preco
-        int estoque
-        int categoria_id FK
-    }
-
-    Pedidos {
-        int id PK
-        int usuario_id FK
-        datetime data_pedido
-        string status
-    }
-
-    Enderecos {
-        int id PK
-        int usuario_id FK
-        string rua
-        string cidade
-        string estado
-        string zip_code
-        string pais
-    }
-
-    Categorias {
-        int id PK
-        string nome
-        string descricao
-    }
-
-    Pedido_Itens {
-        int id PK
-        int pedido_id FK
-        int produto_id FK
-        int quantidade
-        decimal preco
-    }
-
-    Pagamentos {
-        int id PK
-        int pedido_id FK
-        string forma_pagamento
-        decimal quantia
-        datetime data_pagamento
-    }
-
-    Envio {
-        int id PK
-        int pedido_id FK
-        int endereco_id FK
-        datetime data_envio
-        datetime data_entrega
-        string status
-    }
-
-    Avaliacoes {
-        int id PK
-        int usuario_id FK
-        int produto_id FK
-        int avaliacao
-        string comentario
-        datetime data_avaliacao
-    }
-
-    Carrinho {
-        int id PK
-        int usuario_id FK
-        int produto_id FK
-        int quantidade
-    }
+```
+Origem → Landing → Bronze → Silver → Gold → Banco Relacional → Looker Studio
 ```
 
+| Camada  | Formato    | Conteúdo                                       |
+| ------- | ---------- | ---------------------------------------------- |
+| Landing | CSV bruto  | Dados como vieram da origem                    |
+| Bronze  | Delta Lake | Dados padronizados, com rastreabilidade        |
+| Silver  | Delta Lake | Dados limpos e tratados                        |
+| Gold    | Delta/SQL  | Dados modelados e agregados para análise       |
 
-## Connection Info
+## Tecnologias
 
-- **Host:** db.wutleihrwkhcfevexdcj.supabase.co  
-- **Port:** 5432  
-- **Database:** postgres  
-- **User:** teammate  
-- **Password:** vv4WSpDhi5vv  
-- **SSL:** required  
+- **Python** + **Faker** (geração de massa de dados)
+- **Apache Spark / PySpark** + **Delta Lake** (transformação)
+- **PostgreSQL** (Supabase/Neon/Render) — dados finalizados
+- **Docker / Cloud** — orquestração
+- **Looker Studio** — visualização
+- **MkDocs (Material)** — documentação
 
-### Connection String
+## Como executar
 
 ```bash
-psql "postgresql://teammate:PASSWORD@db.wutleihrwkhcfevexdcj.supabase.co:5432/postgres?sslmode=require"
+git clone https://github.com/Luan-zanardo/data-pipeline.git
+cd data-pipeline
+pip install -r requirements.txt
+
+# Transformação das camadas (Etapa 4)
+python src/spark/landing_to_bronze.py
+python src/spark/bronze_to_silver.py
 ```
+
+O passo a passo completo está em [`docs/como-executar.md`](docs/como-executar.md).
+
+## Documentação
+
+A documentação completa é publicada com **MkDocs**:
+
+```bash
+pip install mkdocs-material
+mkdocs serve     # http://127.0.0.1:8000
+```
+
+## Etapas e responsáveis
+
+| Etapa | Descrição | Issue |
+| ----- | --------- | ----- |
+| 1 | Data Lake Base | #4 |
+| 2 | Origem dos Dados e Geração de Massa | #2 |
+| 3 | Orquestração e Camada Landing | #5 |
+| 4 | Transformação Spark (Bronze e Silver) | #6 |
+| 5 | Modelagem, Carga Incremental e Virtualização (Gold) | #9 |
+| 6 | Dataviz com Looker Studio | #10 |
+| 7 | Documentação, Apresentação e Entrega | #11 |
