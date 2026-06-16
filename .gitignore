@@ -1,0 +1,14 @@
+# Segredos
+.env
+
+# Logs do Airflow
+logs/
+
+# Dados aterrissados (não versionar a camada Landing — só a estrutura)
+datalake/landing/*
+!datalake/landing/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/

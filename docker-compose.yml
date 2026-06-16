@@ -1,0 +1,97 @@
+# =============================================================================
+# Etapa 3 — Orquestração e Camada Landing (Issue #5)
+# Apache Airflow (LocalExecutor) em Docker.
+# NÃO usa cron do Linux nem Agendador do Windows: o scheduling é do Airflow.
+# =============================================================================
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.10.5-python3.11
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-metadata:5432/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    PYTHONPATH: /opt/airflow/src
+    # Dependências necessárias para a ingestão (fonte Postgres -> CSV)
+    _PIP_ADDITIONAL_REQUIREMENTS: "psycopg2-binary==2.9.9"
+    # Conexão com o banco de ORIGEM (lida do .env). Veja .env.example.
+    SOURCE_DB_HOST: ${SOURCE_DB_HOST}
+    SOURCE_DB_PORT: ${SOURCE_DB_PORT:-5432}
+    SOURCE_DB_NAME: ${SOURCE_DB_NAME:-postgres}
+    SOURCE_DB_USER: ${SOURCE_DB_USER}
+    SOURCE_DB_PASSWORD: ${SOURCE_DB_PASSWORD}
+    SOURCE_DB_SSLMODE: ${SOURCE_DB_SSLMODE:-require}
+    LANDING_PATH: /opt/airflow/datalake/landing
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./src:/opt/airflow/src
+    - ./datalake:/opt/airflow/datalake
+    - ./logs:/opt/airflow/logs
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    airflow-metadata:
+      condition: service_healthy
+
+services:
+  # Banco de metadados do PRÓPRIO Airflow (não é a fonte dos dados).
+  airflow-metadata:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-metadata-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Inicializa o banco de metadados e cria o usuário admin da UI.
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "${AIRFLOW_ADMIN_USER:-admin}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD:-admin}" \
+          --firstname Admin --lastname Pipeline \
+          --role Admin --email admin@example.com || true
+    restart: on-failure
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      airflow-metadata:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: unless-stopped
+    depends_on:
+      airflow-metadata:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  airflow-metadata-data:
