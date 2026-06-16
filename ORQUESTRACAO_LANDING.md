@@ -10,18 +10,20 @@ das tabelas do banco de origem e grava os dados na camada **Landing** no
 ## Arquitetura desta etapa
 
 ```
-Postgres (origem)  ──ingestão──▶  Landing (CSV bruto)  ──manifesto──▶  Bronze (Etapa 4)
+Postgres (origem)  ──ingestão──▶  Landing (CSV bruto, MinIO)  ──manifesto──▶  Bronze (Etapa 4)
         ▲                                  ▲
-        └── connection string (README)     └── datalake/landing/<tabela>/ingestion_date=<data>/<tabela>.csv
+        └── connection string (README)     └── s3://datalake/landing/<tabela>/ingestion_date=<data>/<tabela>.csv
 ```
 
 - **Orquestrador:** Apache Airflow `2.10.5` (LocalExecutor) — `docker-compose.yml`.
 - **Fonte:** Postgres do projeto (Supabase) — connection string no `README.md`.
-- **Destino (Landing):** pasta `datalake/landing/` montada como volume Docker,
-  particionada por data de ingestão. Quando a Etapa 4 (#4) disponibilizar o
-  object storage, basta apontar a variável `LANDING_PATH` para o bucket.
+- **Destino (Landing):** object storage **MinIO** (S3-compatible) provisionado
+  pela Issue #4, no bucket `datalake`, prefixo `landing/`, particionado por data
+  de ingestão. O destino é controlado pela variável `LANDING_PATH`
+  (`s3://datalake/landing`); apontá-la para um caminho local faz a ingestão
+  gravar em disco, sem mudar o código.
 - **Extração:** `COPY ... TO STDOUT WITH CSV` nativo do Postgres → fidelidade
-  total ao dado bruto (sem transformação).
+  total ao dado bruto (sem transformação). A escrita usa `fsspec`/`s3fs`.
 
 ## DAG `ingestao_landing`
 
@@ -62,10 +64,12 @@ A primeira subida baixa a imagem e instala as dependências; aguarde o
   aguarde o agendamento diário.
 
 ### 5. Conferir o resultado
-Os CSVs aterrissados aparecem em:
+Os CSVs aterrissados aparecem no MinIO. Abra o console em
+<http://localhost:9001> (login: `minioadmin`/`minioadmin`, ou o do `.env`) e
+navegue no bucket `datalake`:
 ```
-datalake/landing/<tabela>/ingestion_date=<YYYY-MM-DD>/<tabela>.csv
-datalake/landing/_manifests/ingestion_<YYYY-MM-DD>.json
+s3://datalake/landing/<tabela>/ingestion_date=<YYYY-MM-DD>/<tabela>.csv
+s3://datalake/landing/_manifests/ingestion_<YYYY-MM-DD>.json
 ```
 
 ### Parar
@@ -83,11 +87,14 @@ A conexão com o banco de origem e a leitura das 10 tabelas foram validadas
 ## Estrutura adicionada
 
 ```
-docker-compose.yml              # Airflow em Docker (orquestrador)
+docker-compose.yml              # Airflow + MinIO (orquestrador + object storage)
 .env.example                    # configuração (copiar para .env)
 dags/
   ingestao_landing.py           # DAG de ingestão + movimentação
 src/ingestion/
-  landing.py                    # extração Postgres -> CSV bruto (reutilizável)
-datalake/landing/               # camada Landing (volume; conteúdo não versionado)
+  landing.py                    # extração Postgres -> CSV bruto no MinIO (reutilizável)
 ```
+
+Os serviços `minio` (object storage) e `minio-init` (cria o bucket `datalake`)
+fazem parte do `docker-compose.yml`. Os dados aterrissados ficam no volume
+Docker `minio-data`, não no repositório.
