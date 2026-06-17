@@ -8,22 +8,19 @@ Fluxo:
     descobrir_tabelas  →  extrair_para_landing (1 task por tabela)  →  gerar_manifesto
 
 - Ingestão:     lê cada tabela do Postgres de origem.
-- Movimentação: grava o CSV bruto na Landing particionada por data e registra
+- Movimentação: grava o CSV bruto na Landing do Data Lake (MinIO/object storage,
+                configurado via ``LANDING_PATH``) particionada por data e registra
                 um manifesto da execução (entrada para a Etapa 4 / Bronze).
 """
 
 from __future__ import annotations
-
-import json
-import os
-from datetime import datetime
-from pathlib import Path
 
 import pendulum
 from airflow.decorators import dag, task
 
 from ingestion.landing import (
     extrair_tabela_para_landing,
+    gravar_manifesto,
     listar_tabelas,
 )
 
@@ -68,19 +65,12 @@ def ingestao_landing():
         O manifesto serve de contrato/handoff para a camada Bronze (Etapa 4):
         descreve o que foi aterrissado, quantas linhas e onde.
         """
-        landing = Path(os.environ.get("LANDING_PATH", "datalake/landing"))
-        manifesto = {
-            "data_ingestao": data_ingestao,
-            "gerado_em": datetime.utcnow().isoformat() + "Z",
-            "total_tabelas": len(resultados),
-            "total_linhas": sum(r["linhas"] for r in resultados),
-            "tabelas": sorted(resultados, key=lambda r: r["tabela"]),
-        }
-        destino = landing / "_manifests" / f"ingestion_{data_ingestao}.json"
-        destino.parent.mkdir(parents=True, exist_ok=True)
-        destino.write_text(json.dumps(manifesto, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(f"Manifesto gravado em {destino} ({manifesto['total_linhas']} linhas no total)")
-        return str(destino)
+        destino = gravar_manifesto(resultados, data_ingestao)
+        print(
+            f"Manifesto gravado em {destino} "
+            f"({sum(r['linhas'] for r in resultados)} linhas no total)"
+        )
+        return destino
 
     # {{ ds }} = data lógica da execução (YYYY-MM-DD), usada para particionar.
     data_ingestao = "{{ ds }}"

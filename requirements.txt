@@ -1,1 +1,7 @@
+# Documentação
 mkdocs-material
+
+# Ingestão da camada Landing (execução local fora do Airflow)
+psycopg2-binary==2.9.9
+# Escrita no object storage S3-compatible / MinIO (s3fs já puxa o fsspec)
+s3fs==2024.6.1

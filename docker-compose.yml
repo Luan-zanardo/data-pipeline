@@ -13,8 +13,9 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     PYTHONPATH: /opt/airflow/src
-    # Dependências necessárias para a ingestão (fonte Postgres -> CSV)
-    _PIP_ADDITIONAL_REQUIREMENTS: "psycopg2-binary==2.9.9"
+    # Dependências da ingestão: Postgres (psycopg2) e escrita no object storage
+    # S3-compatible / MinIO (s3fs traz fsspec + aiobotocore).
+    _PIP_ADDITIONAL_REQUIREMENTS: "psycopg2-binary==2.9.9 s3fs==2024.6.1"
     # Conexão com o banco de ORIGEM (lida do .env). Veja .env.example.
     SOURCE_DB_HOST: ${SOURCE_DB_HOST}
     SOURCE_DB_PORT: ${SOURCE_DB_PORT:-5432}
@@ -22,7 +23,13 @@ x-airflow-common: &airflow-common
     SOURCE_DB_USER: ${SOURCE_DB_USER}
     SOURCE_DB_PASSWORD: ${SOURCE_DB_PASSWORD}
     SOURCE_DB_SSLMODE: ${SOURCE_DB_SSLMODE:-require}
-    LANDING_PATH: /opt/airflow/datalake/landing
+    # Destino da Landing no Data Lake (MinIO). Para gravar local, use um caminho
+    # sem esquema (ex.: /opt/airflow/datalake/landing).
+    LANDING_PATH: ${LANDING_PATH:-s3://datalake/landing}
+    # Object storage do Data Lake (MinIO). Em produção S3, remova S3_ENDPOINT_URL.
+    S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
+    AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+    AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./src:/opt/airflow/src
@@ -34,6 +41,39 @@ x-airflow-common: &airflow-common
       condition: service_healthy
 
 services:
+  # Object storage S3-compatible que hospeda o Data Lake (Issue #4).
+  # API S3 na 9000; console web na 9001 (http://localhost:9001).
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+
+  # Cria o bucket do Data Lake e encerra. Idempotente (--ignore-existing).
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          echo "aguardando o MinIO subir..."; sleep 2;
+        done
+        mc mb --ignore-existing local/datalake
+        echo "Bucket 'datalake' pronto (camada Landing em datalake/landing/)."
+
   # Banco de metadados do PRÓPRIO Airflow (não é a fonte dos dados).
   airflow-metadata:
     image: postgres:16
@@ -82,6 +122,8 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
 
   airflow-scheduler:
     <<: *airflow-common
@@ -92,6 +134,9 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
 
 volumes:
   airflow-metadata-data:
+  minio-data:
