@@ -23,13 +23,15 @@ A execução segue a ordem das camadas medalhão:
 python src/origem/gerar_dados.py
 
 # 2. Ingestão na Landing (Etapa 3 - orquestrada)
-#    Disparada pela ferramenta de orquestração (Docker/Cloud)
+#    Disparada pela ferramenta de orquestração (Docker/Cloud) ou localmente
+#    (você pode usar o script auxiliar para testar offline):
+python generate_mock_landing.py
 
 # 3. Transformação Landing -> Bronze (Etapa 4)
-python src/spark/landing_to_bronze.py
+.venv/bin/python src/spark/landing_to_bronze.py
 
 # 4. Transformação Bronze -> Silver (Etapa 4)
-python src/spark/bronze_to_silver.py
+.venv/bin/python src/spark/bronze_to_silver.py
 
 # 5. Modelagem e carga Gold (Etapa 5)
 python src/gold/silver_to_gold.py

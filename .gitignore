@@ -7,6 +7,8 @@ logs/
 # Dados aterrissados (não versionar a camada Landing — só a estrutura)
 datalake/landing/*
 !datalake/landing/.gitkeep
+datalake/bronze/
+datalake/silver/
 
 # Python
 __pycache__/
