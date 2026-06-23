@@ -1,5 +1,10 @@
 # Data Pipeline
 
+[![Documentação](https://img.shields.io/badge/docs-online-blue?logo=materialformkdocs&logoColor=white)](https://luan-zanardo.github.io/data-pipeline/)
+[![MkDocs Material](https://img.shields.io/badge/MkDocs-Material-526CFE?logo=materialformkdocs&logoColor=white)](https://squidfunk.github.io/mkdocs-material/)
+
+📖 **Documentação online:** <https://luan-zanardo.github.io/data-pipeline/>
+
 Pipeline de **engenharia de dados** construído sobre um Data Lake com
 **arquitetura medalhão** (Landing → Bronze → Silver → Gold), incluindo geração
 de massa de dados, orquestração com Airflow, transformação com Apache Spark +
@@ -80,11 +85,20 @@ O passo a passo completo está em [`docs/como-executar.md`](docs/como-executar.m
 
 ## Documentação
 
-A documentação completa é publicada com **MkDocs**:
+A documentação completa é publicada com **MkDocs** e está disponível online em
+**<https://luan-zanardo.github.io/data-pipeline/>**.
+
+Para rodar localmente:
 
 ```bash
 pip install mkdocs-material
 mkdocs serve     # http://127.0.0.1:8000
+```
+
+Para publicar/atualizar o site no GitHub Pages:
+
+```bash
+mkdocs gh-deploy
 ```
 
 ## Etapas e responsáveis

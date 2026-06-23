@@ -25,6 +25,10 @@ nav:
   - Como Executar: como-executar.md
   - Entrega: entrega.md
 
+# Specs internos de design não fazem parte do site publicado.
+exclude_docs: |
+  superpowers/
+
 markdown_extensions:
   - admonition
   - tables
