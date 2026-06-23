@@ -13,20 +13,27 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     PYTHONPATH: /opt/airflow/src
-    # Dependências da ingestão: Postgres (psycopg2) e escrita no object storage
-    # S3-compatible / MinIO (s3fs traz fsspec + aiobotocore).
-    _PIP_ADDITIONAL_REQUIREMENTS: "psycopg2-binary==2.9.9 s3fs==2024.6.1"
-    # Conexão com o banco de ORIGEM (lida do .env). Veja .env.example.
+    # Dependências do Python: Airflow, Spark, Delta, S3, Postgres
+    _PIP_ADDITIONAL_REQUIREMENTS: "psycopg2-binary==2.9.9 s3fs==2025.2.0 pyspark==3.5.0 delta-spark==3.2.0"
+    # Dependências do Spark (JARs): Delta Lake e driver JDBC do Postgres
+    AIRFLOW__SPARK__PACKAGES: "io.delta:delta-spark_2.12:3.2.0,org.postgresql:postgresql:42.7.3"
+    # Conexão com o banco de ORIGEM (lida do .env).
     SOURCE_DB_HOST: ${SOURCE_DB_HOST}
     SOURCE_DB_PORT: ${SOURCE_DB_PORT:-5432}
     SOURCE_DB_NAME: ${SOURCE_DB_NAME:-postgres}
     SOURCE_DB_USER: ${SOURCE_DB_USER}
     SOURCE_DB_PASSWORD: ${SOURCE_DB_PASSWORD}
     SOURCE_DB_SSLMODE: ${SOURCE_DB_SSLMODE:-require}
-    # Destino da Landing no Data Lake (MinIO). Para gravar local, use um caminho
-    # sem esquema (ex.: /opt/airflow/datalake/landing).
+    # Conexão com o banco de DESTINO (lida do .env).
+    DEST_DB_HOST: ${DEST_DB_HOST}
+    DEST_DB_PORT: ${DEST_DB_PORT:-5432}
+    DEST_DB_NAME: ${DEST_DB_NAME:-postgres}
+    DEST_DB_USER: ${DEST_DB_USER}
+    DEST_DB_PASSWORD: ${DEST_DB_PASSWORD}
+    DEST_DB_SSLMODE: ${DEST_DB_SSLMODE:-require}
+    # Destino da Landing no Data Lake (MinIO).
     LANDING_PATH: ${LANDING_PATH:-s3://datalake/landing}
-    # Object storage do Data Lake (MinIO). Em produção S3, remova S3_ENDPOINT_URL.
+    # Object storage do Data Lake (MinIO).
     S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
     AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
     AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -41,8 +48,6 @@ x-airflow-common: &airflow-common
       condition: service_healthy
 
 services:
-  # Object storage S3-compatible que hospeda o Data Lake (Issue #4).
-  # API S3 na 9000; console web na 9001 (http://localhost:9001).
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -62,7 +67,6 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # Cria o bucket do Data Lake e encerra. Idempotente (--ignore-existing).
   minio-init:
     image: minio/mc:latest
     depends_on:
@@ -81,7 +85,6 @@ services:
         mc mb --ignore-existing local/datalake
         echo "Bucket 'datalake' pronto (camada Landing em datalake/landing/)."
 
-  # Banco de metadados do PRÓPRIO Airflow (não é a fonte dos dados).
   airflow-metadata:
     image: postgres:16
     environment:
@@ -97,7 +100,6 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # Inicializa o banco de metadados e cria o usuário admin da UI.
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
