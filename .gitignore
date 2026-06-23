@@ -9,8 +9,15 @@ datalake/landing/*
 !datalake/landing/.gitkeep
 datalake/bronze/
 datalake/silver/
+datalake/gold/
 
 # Python
 __pycache__/
 *.pyc
 .venv/
+
+# Build do MkDocs
+site/
+
+# macOS
+.DS_Store
