@@ -6,10 +6,10 @@ garantindo particionamento por data de ingestão.
 """
 
 import argparse
+import glob
 import logging
 import os
 from pathlib import Path
-from datetime import datetime
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import current_timestamp, input_file_name, lit
 
@@ -44,8 +44,6 @@ def processar_tabela_landing(spark: SparkSession, tabela: str, data_especifica: 
     # Construir caminhos de leitura e basePath para que o Spark infira o particionamento ingestion_date=...
     if data_especifica:
         path_busca = path_landing / f"ingestion_date={data_especifica}" / "*.csv"
-        # Verifica se há arquivos para processar nesta data
-        import glob
         arquivos = glob.glob(str(path_busca))
         if not arquivos:
             logger.info(f"Nenhum arquivo CSV encontrado para a tabela {tabela} na data {data_especifica}.")
@@ -53,7 +51,6 @@ def processar_tabela_landing(spark: SparkSession, tabela: str, data_especifica: 
         caminho_leitura = str(path_busca)
     else:
         path_busca = path_landing / "ingestion_date=*" / "*.csv"
-        import glob
         arquivos = glob.glob(str(path_busca))
         if not arquivos:
             logger.info(f"Nenhum arquivo CSV encontrado para a tabela {tabela} na camada Landing.")
@@ -74,6 +71,8 @@ def processar_tabela_landing(spark: SparkSession, tabela: str, data_especifica: 
         .withColumn("_input_file_name", input_file_name()) \
         .withColumn("_loaded_at", current_timestamp())
 
+    total_registros = df_bronze.count()
+
     # Gravar na Bronze no formato Delta
     # Particionado por ingestion_date, no modo append para manter histórico
     df_bronze.write \
@@ -82,7 +81,7 @@ def processar_tabela_landing(spark: SparkSession, tabela: str, data_especifica: 
         .partitionBy("ingestion_date") \
         .save(str(path_bronze))
 
-    logger.info(f"Tabela [{tabela}] gravada na Bronze com sucesso. Total de registros processados: {df_bronze.count()}")
+    logger.info(f"Tabela [{tabela}] gravada na Bronze com sucesso. Total de registros processados: {total_registros}")
 
 
 def main() -> None:

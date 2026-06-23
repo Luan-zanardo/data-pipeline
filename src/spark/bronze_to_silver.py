@@ -161,7 +161,7 @@ def processar_tabela_bronze(spark: SparkSession, tabela: str, data_especifica: s
     # Filtrar por data lógica específica de processamento, se fornecida
     if data_especifica:
         df_bronze = df_bronze.filter(col("ingestion_date") == data_especifica)
-        if df_bronze.rdd.isEmpty():
+        if df_bronze.limit(1).count() == 0:
             logger.info(f"Nenhum registro encontrado na Bronze para a tabela {tabela} na data {data_especifica}.")
             return
 
