@@ -79,7 +79,8 @@ def processar_tabela_gold(spark: SparkSession, tabela: str, base_path: Path, jdb
         logger.info(f"Filtrando somente registros atuais da dimensao [{tabela}]...")
         df_gold = df_gold.filter(col("is_current") == lit(True))
 
-    logger.info(f"Gravando tabela [{tabela}] no Postgres de destino...")
+    total_registros = df_gold.count()
+    logger.info(f"Gravando tabela [{tabela}] no Postgres de destino ({total_registros} registros)...")
     df_gold.write \
         .format("jdbc") \
         .option("url", jdbc_config["url"]) \
@@ -91,7 +92,7 @@ def processar_tabela_gold(spark: SparkSession, tabela: str, base_path: Path, jdb
         .mode("overwrite") \
         .save()
 
-    logger.info(f"Tabela [{tabela}] gravada no Postgres com sucesso. Registros enviados: {df_gold.count()}")
+    logger.info(f"Tabela [{tabela}] gravada no Postgres com sucesso. Registros enviados: {total_registros}")
 
 
 def main() -> None:

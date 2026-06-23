@@ -159,8 +159,9 @@ def processar_dimensao_scd2(
     path_gold = base_path / "gold" / tabela
     df_origem = df_origem.dropDuplicates([chave_natural]).cache()
 
-    if df_origem.rdd.isEmpty():
+    if df_origem.limit(1).count() == 0:
         logger.info(f"Nenhum registro de origem encontrado para a dimensao [{tabela}].")
+        df_origem.unpersist()
         return
 
     instante_processamento = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -179,12 +180,14 @@ def processar_dimensao_scd2(
             .withColumn("is_current", lit(True)) \
             .select(coluna_sk, *colunas_origem, "valido_de", "valido_ate", "is_current")
 
+        total_inicial = df_inicial.count()
         df_inicial.write \
             .format("delta") \
             .mode("overwrite") \
             .save(str(path_gold))
 
-        logger.info(f"Dimensao [{tabela}] criada com sucesso. Registros inseridos: {df_inicial.count()}")
+        df_origem.unpersist()
+        logger.info(f"Dimensao [{tabela}] criada com sucesso. Registros inseridos: {total_inicial}")
         return
 
     df_atual = spark.read.format("delta").load(str(path_gold)) \
@@ -200,16 +203,19 @@ def processar_dimensao_scd2(
         .select("source.*") \
         .cache()
 
-    if df_novos_ou_alterados.rdd.isEmpty():
+    if df_novos_ou_alterados.limit(1).count() == 0:
         logger.info(f"Nenhuma mudanca identificada para a dimensao [{tabela}].")
+        df_novos_ou_alterados.unpersist()
+        df_origem.unpersist()
         return
 
     df_alterados = df_origem.alias("source") \
         .join(df_atual.alias("target"), chave_natural, "inner") \
         .filter(col("source.hash_scd") != col("target.hash_scd")) \
-        .select(col(chave_natural))
+        .select(col(chave_natural)) \
+        .cache()
 
-    if not df_alterados.rdd.isEmpty():
+    if df_alterados.limit(1).count() > 0:
         logger.info(f"Fechando versoes atuais alteradas da dimensao [{tabela}]...")
         delta_table = DeltaTable.forPath(spark, str(path_gold))
         delta_table.alias("target") \
@@ -222,6 +228,7 @@ def processar_dimensao_scd2(
                 "valido_ate": f"CAST('{instante_processamento}' AS TIMESTAMP)",
             }) \
             .execute()
+    df_alterados.unpersist()
 
     maior_sk = obter_maior_surrogate(spark, path_gold, coluna_sk)
     window_sk = Window.orderBy(col(chave_natural))
@@ -234,12 +241,15 @@ def processar_dimensao_scd2(
         .withColumn("is_current", lit(True)) \
         .select(coluna_sk, *colunas_origem, "valido_de", "valido_ate", "is_current")
 
+    total_inseridos = df_para_inserir.count()
     df_para_inserir.write \
         .format("delta") \
         .mode("append") \
         .save(str(path_gold))
 
-    logger.info(f"Dimensao [{tabela}] atualizada com sucesso. Registros inseridos: {df_para_inserir.count()}")
+    df_novos_ou_alterados.unpersist()
+    df_origem.unpersist()
+    logger.info(f"Dimensao [{tabela}] atualizada com sucesso. Registros inseridos: {total_inseridos}")
 
 
 def processar_dim_cliente(spark: SparkSession, base_path: Path) -> None:
@@ -391,8 +401,9 @@ def processar_fato_vendas(spark: SparkSession, base_path: Path) -> None:
         col("p.data_pedido").alias("data_pedido"),
     ).cache()
 
-    if df_fato_incremental.rdd.isEmpty():
+    if df_fato_incremental.limit(1).count() == 0:
         logger.info("Nenhum registro incremental encontrado para a fato [fato_vendas].")
+        df_fato_incremental.unpersist()
         return
 
     novo_checkpoint = df_fato_incremental.agg(spark_max(col("data_pedido")).alias("last_value")).collect()[0]["last_value"]
@@ -401,9 +412,10 @@ def processar_fato_vendas(spark: SparkSession, base_path: Path) -> None:
         df_existente = spark.read.format("delta").load(str(path_gold)).select("id_pedido_item")
         df_fato_incremental = df_fato_incremental.join(df_existente, "id_pedido_item", "left_anti")
 
-    if df_fato_incremental.rdd.isEmpty():
+    if df_fato_incremental.limit(1).count() == 0:
         logger.info("Registros incrementais ja estavam gravados na fato [fato_vendas].")
         atualizar_checkpoint_fato(spark, path_checkpoint, novo_checkpoint)
+        df_fato_incremental.unpersist()
         return
 
     maior_sk = obter_maior_surrogate(spark, path_gold, "sk_venda")
@@ -424,14 +436,16 @@ def processar_fato_vendas(spark: SparkSession, base_path: Path) -> None:
             "forma_pagamento",
         )
 
+    total_fato = df_fato.count()
     modo_gravacao = "append" if tabela_delta_existe(spark, path_gold) else "overwrite"
     df_fato.write \
         .format("delta") \
         .mode(modo_gravacao) \
         .save(str(path_gold))
 
+    df_fato_incremental.unpersist()
     atualizar_checkpoint_fato(spark, path_checkpoint, novo_checkpoint)
-    logger.info(f"Fato [fato_vendas] gravada com sucesso. Registros inseridos: {df_fato.count()}")
+    logger.info(f"Fato [fato_vendas] gravada com sucesso. Registros inseridos: {total_fato}")
 
 
 def main() -> None:
