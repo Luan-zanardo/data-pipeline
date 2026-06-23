@@ -15,7 +15,13 @@ theme:
 nav:
   - Início: index.md
   - Arquitetura: arquitetura.md
+  - Modelo de Dados: modelo-dados.md
   - Etapas do Projeto: etapas.md
+  - Pipeline:
+      - Geração de Massa: geracao-massa.md
+      - Orquestração e Landing: orquestracao.md
+      - Bronze e Silver: bronze-silver.md
+      - Gold: gold.md
   - Como Executar: como-executar.md
   - Entrega: entrega.md
 
@@ -23,4 +29,8 @@ markdown_extensions:
   - admonition
   - tables
   - pymdownx.highlight
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

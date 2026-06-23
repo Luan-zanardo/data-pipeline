@@ -1,31 +1,57 @@
 # Arquitetura
 
 O projeto adota a **arquitetura medalhão**, que organiza o Data Lake em camadas
-sucessivas de refinamento. Cada camada agrega qualidade e valor ao dado.
+sucessivas de refinamento (Landing → Bronze → Silver → Gold). Cada camada
+agrega qualidade e valor ao dado, até a virtualização em um banco relacional
+para visualização.
+
+## Fluxo do dado
+
+```mermaid
+flowchart LR
+    A[(Postgres origem)] -->|Airflow: COPY CSV| B[Landing<br/>CSV bruto · MinIO]
+    B -->|Spark| C[Bronze<br/>Delta Lake]
+    C -->|Spark| D[Silver<br/>Delta Lake]
+    D -->|Spark| E[Gold<br/>Esquema estrela · Delta]
+    E -->|Spark JDBC| F[(Postgres destino)]
+    F --> G[Looker Studio]
+```
 
 ## Camadas
 
 | Camada  | Formato      | Conteúdo                                                |
 | ------- | ------------ | ------------------------------------------------------- |
 | Landing | CSV bruto    | Dados exatamente como vieram da origem                  |
-| Bronze  | Delta Lake   | Dados padronizados, com rastreabilidade da origem       |
-| Silver  | Delta Lake   | Dados limpos e tratados (regras de negócio)             |
-| Gold    | Delta / SQL  | Dados modelados e agregados, prontos para análise       |
+| Bronze  | Delta Lake   | Dados padronizados, com auditoria de origem             |
+| Silver  | Delta Lake   | Dados limpos, tipados e deduplicados                    |
+| Gold    | Delta Lake   | Modelo dimensional (fato + dimensões SCD2)              |
 
 ## Componentes
 
-- **Object Storage**: armazena o Data Lake (Landing, Bronze, Silver, Gold).
-- **Apache Spark (PySpark)**: motor de transformação entre as camadas.
-- **Delta Lake**: formato transacional usado nas camadas Bronze e Silver.
-- **Orquestrador** (Docker/Cloud): agenda as ingestões e movimentações.
-- **Banco Relacional** (PostgreSQL — Supabase/Neon/Render): recebe a camada Gold.
-- **Looker Studio**: camada de visualização sobre os dados Gold.
+- **Apache Airflow** (Docker, LocalExecutor) — orquestra e agenda a ingestão da
+  Landing. O scheduling é do Airflow, sem cron/Agendador do SO.
+- **MinIO** (Docker, S3-compatible) — object storage que hospeda o Data Lake.
+- **Apache Spark / PySpark** — motor de transformação entre as camadas.
+- **Delta Lake** — formato transacional (ACID, MERGE, time travel) das camadas
+  Bronze, Silver e Gold.
+- **PostgreSQL** — banco de origem (Supabase) e banco de destino da Gold.
+- **Looker Studio** — camada de visualização sobre a Gold.
+- **MkDocs (Material)** — esta documentação.
 
 ## Jornada do dado
 
-1. Os dados são gerados (Faker) e disponibilizados na origem.
-2. A orquestração ingere os dados brutos na **Landing**.
-3. PySpark lê a Landing e grava a **Bronze** (Delta Lake).
-4. PySpark limpa e trata os dados, gravando a **Silver** (Delta Lake).
-5. Os dados são modelados e agregados na **Gold**, com carga incremental.
-6. A Gold alimenta o banco relacional e os dashboards no Looker Studio.
+1. **Geração de massa** (Faker) cria os dados de origem — 10 tabelas, 10k+
+   linhas, 3 anos de histórico. Ver [Geração de Massa](geracao-massa.md).
+2. O **Airflow** ingere os dados brutos do Postgres na **Landing** (CSV no
+   MinIO), particionados por data. Ver [Orquestração e Landing](orquestracao.md).
+3. O **Spark** lê a Landing e grava a **Bronze** (Delta, com auditoria).
+4. O **Spark** limpa, tipa e deduplica, gravando a **Silver** (Delta, via
+   MERGE). Ver [Bronze e Silver](bronze-silver.md).
+5. O **Spark** modela a **Gold** (esquema estrela) com SCD2 e carga
+   incremental, e virtualiza no Postgres de destino. Ver [Gold](gold.md).
+6. A Gold alimenta os **dashboards no Looker Studio**.
+
+## Esquema estrela (Gold)
+
+O detalhamento das tabelas de origem e do modelo dimensional está em
+[Modelo de Dados](modelo-dados.md).
