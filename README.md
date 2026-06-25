@@ -42,13 +42,14 @@ data-pipeline/
 ├── docker-compose.yml           # Airflow + MinIO
 ├── .env.example                 # variáveis de ambiente (copiar para .env)
 ├── dags/
-│   └── ingestao_landing.py      # DAG de ingestão da Landing
+│   └── pipeline_completo.py     # DAG principal: ingestão + Spark + Gold + Postgres
 ├── src/
 │   ├── ingestion/landing.py     # extração Postgres -> CSV bruto (reutilizável)
 │   └── spark/
-│       ├── landing_to_bronze.py # Landing -> Bronze (Delta)
-│       ├── bronze_to_silver.py  # Bronze -> Silver (limpeza + MERGE)
-│       ├── silver_to_gold.py    # Silver -> Gold (estrela, SCD2, incremental)
+│       ├── utils.py             # SparkSession centralizada (Delta Lake + S3A/MinIO)
+│       ├── landing_to_bronze.py # Landing -> Bronze (Delta, particionado por data)
+│       ├── bronze_to_silver.py  # Bronze -> Silver (tipagem, limpeza, MERGE/upsert)
+│       ├── silver_to_gold.py    # Silver -> Gold (estrela, SCD2, carga incremental)
 │       ├── gold_to_postgres.py  # Gold -> Postgres destino (JDBC)
 │       └── validar_gold.py      # validação/métricas da Gold
 └── docs/                        # documentação MkDocs
