@@ -4,7 +4,7 @@ Projeto de **engenharia de dados** que constrói um pipeline completo sobre um
 Data Lake usando a **arquitetura medalhão** (Landing → Bronze → Silver → Gold),
 com geração de massa de dados, orquestração com Airflow, transformação com
 Apache Spark + Delta Lake e disponibilização dos dados finalizados em um banco
-relacional para análise no Looker Studio.
+relacional para análise no Metabase.
 
 ## Visão geral
 
@@ -15,7 +15,7 @@ flowchart LR
     C --> D[Silver]
     D --> E[Gold]
     E --> F[(Banco Relacional)]
-    F --> G[Looker Studio]
+    F --> G[Metabase]
 ```
 
 ## Sumário da documentação
@@ -28,6 +28,7 @@ flowchart LR
     - [Orquestração e Landing](orquestracao.md) — Airflow + MinIO.
     - [Bronze e Silver](bronze-silver.md) — transformação Spark/Delta.
     - [Gold](gold.md) — modelo dimensional, carga incremental e Postgres.
+    - [Dataviz (Metabase)](metabase.md) — dashboards self-host sobre a Gold.
 - [Como Executar](como-executar.md) — passo a passo para rodar o pipeline.
 - [Entrega](entrega.md) — checklist e prazos da entrega final.
 
@@ -40,5 +41,5 @@ flowchart LR
 | Orquestração e Camada Landing | #5 — p-afonso |
 | Transformação Spark (Bronze e Silver) | #6 |
 | Modelagem, Carga Incremental e Virtualização (Gold) | #9 |
-| Dataviz com Looker Studio | #10 — Luan-zanardo |
+| Dataviz com Metabase | #10 — Luan-zanardo |
 | Documentação, Apresentação e Entrega | #11 — gabrielpagnan |

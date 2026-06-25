@@ -48,7 +48,7 @@ python src/spark/silver_to_gold.py
 # 5. Validação da Gold (counts, SCD2, checkpoint)
 python src/spark/validar_gold.py
 
-# 6. (Opcional) Gold -> Postgres de destino para o Looker (Etapa 5)
+# 6. (Opcional) Gold -> Postgres de destino para o Metabase (Etapa 5)
 python src/spark/gold_to_postgres.py
 ```
 
@@ -65,11 +65,13 @@ docker compose up -d
 
 - UI do Airflow: <http://localhost:8080> (login no `.env`, padrão `admin`/`admin`).
 - Console do MinIO: <http://localhost:9001> (padrão `minioadmin`/`minioadmin`).
+- Metabase: <http://localhost:3000> (cria o usuário admin no primeiro acesso).
 
 Ative e dispare a DAG **`ingestao_landing`** para ingerir o Postgres de origem
 na Landing. Depois siga do passo 2 do Caminho A para transformar as camadas.
 
 O passo a passo detalhado está em [Orquestração e Landing](orquestracao.md).
+Para montar os dashboards, veja [Dataviz (Metabase)](metabase.md).
 
 ---
 

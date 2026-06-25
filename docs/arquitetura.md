@@ -14,7 +14,7 @@ flowchart LR
     C -->|Spark| D[Silver<br/>Delta Lake]
     D -->|Spark| E[Gold<br/>Esquema estrela · Delta]
     E -->|Spark JDBC| F[(Postgres destino)]
-    F --> G[Looker Studio]
+    F --> G[Metabase<br/>self-host]
 ```
 
 ## Camadas
@@ -35,7 +35,8 @@ flowchart LR
 - **Delta Lake** — formato transacional (ACID, MERGE, time travel) das camadas
   Bronze, Silver e Gold.
 - **PostgreSQL** — banco de origem (Supabase) e banco de destino da Gold.
-- **Looker Studio** — camada de visualização sobre a Gold.
+- **Metabase** (Docker, self-host) — camada de visualização e dashboards sobre
+  a Gold, consumindo o Postgres de destino. Ver [Dataviz (Metabase)](metabase.md).
 - **MkDocs (Material)** — esta documentação.
 
 ## Jornada do dado
@@ -49,7 +50,8 @@ flowchart LR
    MERGE). Ver [Bronze e Silver](bronze-silver.md).
 5. O **Spark** modela a **Gold** (esquema estrela) com SCD2 e carga
    incremental, e virtualiza no Postgres de destino. Ver [Gold](gold.md).
-6. A Gold alimenta os **dashboards no Looker Studio**.
+6. A Gold alimenta os **dashboards no Metabase** (self-host), conectado ao
+   Postgres de destino. Ver [Dataviz (Metabase)](metabase.md).
 
 ## Esquema estrela (Gold)
 
