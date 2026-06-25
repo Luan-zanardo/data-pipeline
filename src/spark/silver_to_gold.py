@@ -1,8 +1,8 @@
 """Silver to Gold.
 
-Lê as tabelas da camada Silver (via S3A), constrói o modelo dimensional e
-grava na camada Gold em formato Delta Lake, aplicando a lógica de carga
-incremental (SCD Type 2 para dimensões e checkpoint para fatos).
+Lê as tabelas da camada Silver, constrói o modelo dimensional e grava na
+camada Gold em formato Delta Lake, aplicando a lógica de carga incremental
+(SCD Type 2 para dimensões e checkpoint para fatos).
 """
 
 import argparse
@@ -12,7 +12,7 @@ from datetime import datetime
 
 from delta.tables import DeltaTable
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, current_timestamp, date_format, lit, max, to_date
+from pyspark.sql.functions import col, current_timestamp, date_format, lit, max, to_date, expr
 
 from spark.utils import get_spark_session
 
@@ -27,7 +27,6 @@ def ler_tabela_silver(spark: SparkSession, base_path: str, tabela: str):
 
 
 def processar_dim_data(spark: SparkSession, base_path: str) -> None:
-    """Gera a dimensão de data. É sempre recriada (overwrite) pois é uma dimensão derivada."""
     logger.info("Processando dimensao [dim_data]...")
     pedidos = ler_tabela_silver(spark, base_path, "pedidos")
     path_gold = f"{base_path}/gold/dim_data"
@@ -40,60 +39,64 @@ def processar_dim_data(spark: SparkSession, base_path: str) -> None:
 
 
 def processar_dimensao_scd2(spark: SparkSession, base_path: str, nome_dim: str, tabela_silver: str, chave_negocio: str, colunas_comparacao: list[str]):
-    """Processa uma dimensão usando a lógica SCD Type 2."""
     logger.info(f"Processando dimensao [SCD-2] [{nome_dim}]...")
     path_gold = f"{base_path}/gold/{nome_dim}"
-    
-    # 1. Prepara os novos dados (source) da camada Silver
+    target_key_name = f"id_{nome_dim.split('_')[1]}"
+
     df_source = ler_tabela_silver(spark, base_path, tabela_silver)
-    
-    # 2. Verifica se a tabela de destino (target) na Gold existe
+
+    # Se a tabela Gold não existe, cria pela primeira vez com o esquema correto.
     if not DeltaTable.isDeltaTable(spark, path_gold):
         logger.info(f"Tabela [{nome_dim}] não existe. Criando pela primeira vez.")
         (df_source.withColumn("is_current", lit(True))
                   .withColumn("start_date", current_timestamp())
                   .withColumn("end_date", lit(None).cast("timestamp"))
+                  .withColumnRenamed(chave_negocio, target_key_name)
                   .write.format("delta").save(path_gold))
         return
 
     delta_target = DeltaTable.forPath(spark, path_gold)
-    
-    # 3. Cria um DataFrame com as atualizações a serem inseridas
-    # Adiciona colunas de controle SCD2 e um hash para comparação
-    df_updates = (
-        df_source.alias("source")
-        .join(delta_target.toDF().alias("target"), col(f"source.{chave_negocio}") == col(f"target.{chave_negocio}"))
-        .where("target.is_current = true")
-        .filter(" OR ".join([f"source.{c} <> target.{c}" for c in colunas_comparacao]))
-        .select("source.*")
+    df_target_current = delta_target.toDF().where(col("is_current") == True)
+
+    # 1. Identifica registros novos ou alterados
+    join_condition = col(f"s.{chave_negocio}") == col(f"t.{target_key_name}")
+    compare_condition = " OR ".join([f"s.{c} <> t.{c}" for c in colunas_comparacao])
+
+    new_and_changed_df = (
+        df_source.alias("s")
+        .join(df_target_current.alias("t"), join_condition, "left_outer")
+        .where(col(f"t.{target_key_name}").isNull() | expr(compare_condition))
+        .select("s.*")
     )
 
-    # 4. Expira os registros antigos que foram atualizados
-    if df_updates.count() > 0:
-        logger.info(f"Encontradas {df_updates.count()} atualizações. Expirando registros antigos...")
-        condition_expire = f"target.{chave_negocio} IN ({','.join([str(row[chave_negocio]) for row in df_updates.select(chave_negocio).collect()])})"
-        delta_target.update(
-            condition=f"is_current = true AND {condition_expire}",
-            set={"is_current": lit(False), "end_date": current_timestamp()}
-        )
+    if new_and_changed_df.rdd.isEmpty():
+        logger.info(f"Nenhuma alteração ou novo registro encontrado para a dimensao [{nome_dim}].")
+        return
 
-    # 5. Insere os registros novos e as novas versões dos registros atualizados
-    df_inserts = (
-        df_source.withColumn("is_current", lit(True))
-                 .withColumn("start_date", current_timestamp())
-                 .withColumn("end_date", lit(None).cast("timestamp"))
-    )
+    logger.info(f"Encontrados {new_and_changed_df.count()} registros novos ou alterados.")
 
-    delta_target.alias("target").merge(
-        df_inserts.alias("source"),
-        f"target.{chave_negocio} = source.{chave_negocio}"
-    ).whenNotMatchedInsertAll().execute()
+    # 2. Expira os registros antigos que foram atualizados
+    keys_to_expire_df = new_and_changed_df.select(col(chave_negocio).alias("merge_key"))
     
-    logger.info(f"Dimensao [{nome_dim}] atualizada com sucesso.")
+    (delta_target.alias("t")
+        .merge(keys_to_expire_df.alias("s"), col(f"t.{target_key_name}") == col("s.merge_key"))
+        .whenMatchedUpdate(condition="t.is_current = true", set={"is_current": lit(False), "end_date": current_timestamp()})
+        .execute()
+    )
+    logger.info("Versões antigas dos registros foram expiradas.")
+
+    # 3. Insere as novas versões e os registros completamente novos
+    (new_and_changed_df
+        .withColumn("is_current", lit(True))
+        .withColumn("start_date", current_timestamp())
+        .withColumn("end_date", lit(None).cast("timestamp"))
+        .withColumnRenamed(chave_negocio, target_key_name)
+        .write.format("delta").mode("append").save(path_gold)
+    )
+    logger.info(f"Novos registros e atualizações inseridos com sucesso na dimensao [{nome_dim}].")
 
 
 def ler_checkpoint(spark: SparkSession, path: str) -> datetime:
-    """Lê o valor do último checkpoint. Retorna uma data mínima se não existir."""
     try:
         df = spark.read.format("delta").load(path)
         return df.select("last_processed_date").first()[0]
@@ -102,7 +105,6 @@ def ler_checkpoint(spark: SparkSession, path: str) -> datetime:
         return datetime(1900, 1, 1)
 
 def gravar_checkpoint(spark: SparkSession, path: str, value: datetime):
-    """Salva o novo valor do checkpoint."""
     logger.info(f"Gravando novo checkpoint [{value}] em {path}")
     spark.createDataFrame([(value,)], ["last_processed_date"]).write.format("delta").mode("overwrite").save(path)
 
@@ -133,7 +135,7 @@ def processar_fato_vendas(spark: SparkSession, base_path: str) -> None:
     )
 
     (fato.write.format("delta")
-               .mode("append")  # Alterado para append
+               .mode("append")
                .save(f"{base_path}/gold/fato_vendas"))
     
     gravar_checkpoint(spark, checkpoint_path, new_checkpoint)
@@ -150,7 +152,7 @@ def main() -> None:
 
     try:
         processar_dim_data(spark, base_path)
-        processar_dimensao_scd2(spark, base_path, "dim_cliente", "usuarios", "id", ["nome", "email", "telefone"])
+        processar_dimensao_scd2(spark, base_path, "dim_cliente", "usuarios", "id", ["nome", "email"])
         processar_dimensao_scd2(spark, base_path, "dim_produto", "produtos", "id", ["nome", "descricao", "preco"])
         processar_fato_vendas(spark, base_path)
     finally:
