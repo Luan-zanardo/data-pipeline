@@ -1,59 +1,32 @@
-# Arquitetura
 
-O projeto adota a **arquitetura medalhão**, que organiza o Data Lake em camadas
-sucessivas de refinamento (Landing → Bronze → Silver → Gold). Cada camada
-agrega qualidade e valor ao dado, até a virtualização em um banco relacional
-para visualização.
+## Componentes Principais
 
-## Fluxo do dado
+-   **PostgreSQL (Origem e Destino):**
+    -   **Origem:** Simula o banco de dados transacional de um sistema de produção (OLTP), como um e-commerce. É populado com dados falsos (Faker) para simular um ambiente realista.
+    -   **Destino:** Atua como a **Camada de Servir (Serving Layer)**, recebendo os dados já modelados da camada Gold para serem consumidos pelas ferramentas de BI.
 
-```mermaid
-flowchart LR
-    A[(Postgres origem)] -->|Airflow: COPY CSV| B[Landing<br/>CSV bruto · MinIO]
-    B -->|Spark| C[Bronze<br/>Delta Lake]
-    C -->|Spark| D[Silver<br/>Delta Lake]
-    D -->|Spark| E[Gold<br/>Esquema estrela · Delta]
-    E -->|Spark JDBC| F[(Postgres destino)]
-    F --> G[Metabase<br/>self-host]
-```
+-   **Apache Airflow:** Atua como o cérebro do pipeline. É o orquestrador responsável por agendar, executar e monitorar as tarefas (DAGs) de forma automática e resiliente, sem depender de agendadores do sistema operacional.
 
-## Camadas
+-   **MinIO (Data Lake):** Um serviço de object storage de alta performance, compatível com a API do Amazon S3. Ele armazena os dados em todas as camadas da arquitetura medalhão.
 
-| Camada  | Formato      | Conteúdo                                                |
-| ------- | ------------ | ------------------------------------------------------- |
-| Landing | CSV bruto    | Dados exatamente como vieram da origem                  |
-| Bronze  | Delta Lake   | Dados padronizados, com auditoria de origem             |
-| Silver  | Delta Lake   | Dados limpos, tipados e deduplicados                    |
-| Gold    | Delta Lake   | Modelo dimensional (fato + dimensões SCD2)              |
+-   **Apache Spark (PySpark):** O motor de processamento de dados distribuído. É utilizado para executar as transformações (ETL) entre as camadas do Data Lake, desde a limpeza e enriquecimento até a modelagem dimensional.
 
-## Componentes
+-   **Delta Lake:** Um formato de armazenamento open-source que traz confiabilidade (transações ACID), performance e funcionalidades avançadas de gerenciamento de dados (como `merge`, `time travel`, `SCD-2`) para o Data Lake.
 
-- **Apache Airflow** (Docker, LocalExecutor) — orquestra e agenda a ingestão da
-  Landing. O scheduling é do Airflow, sem cron/Agendador do SO.
-- **MinIO** (Docker, S3-compatible) — object storage que hospeda o Data Lake.
-- **Apache Spark / PySpark** — motor de transformação entre as camadas.
-- **Delta Lake** — formato transacional (ACID, MERGE, time travel) das camadas
-  Bronze, Silver e Gold.
-- **PostgreSQL** — banco de origem (Supabase) e banco de destino da Gold.
-- **Metabase** (Docker, self-host) — camada de visualização e dashboards sobre
-  a Gold, consumindo o Postgres de destino. Ver [Dataviz (Metabase)](metabase.md).
-- **MkDocs (Material)** — esta documentação.
+-   **Metabase:** Uma ferramenta de Business Intelligence open-source, utilizada para criar os dashboards e visualizações. Ela se conecta ao PostgreSQL de destino para consumir os dados da camada Gold.
 
-## Jornada do dado
+## Jornada do Dado
 
-1. **Geração de massa** (Faker) cria os dados de origem — 10 tabelas, 10k+
-   linhas, 3 anos de histórico. Ver [Geração de Massa](geracao-massa.md).
-2. O **Airflow** ingere os dados brutos do Postgres na **Landing** (CSV no
-   MinIO), particionados por data. Ver [Orquestração e Landing](orquestracao.md).
-3. O **Spark** lê a Landing e grava a **Bronze** (Delta, com auditoria).
-4. O **Spark** limpa, tipa e deduplica, gravando a **Silver** (Delta, via
-   MERGE). Ver [Bronze e Silver](bronze-silver.md).
-5. O **Spark** modela a **Gold** (esquema estrela) com SCD2 e carga
-   incremental, e virtualiza no Postgres de destino. Ver [Gold](gold.md).
-6. A Gold alimenta os **dashboards no Metabase** (self-host), conectado ao
-   Postgres de destino. Ver [Dataviz (Metabase)](metabase.md).
+1.  **Geração de Massa:** A primeira tarefa do pipeline garante que o banco de dados de origem esteja populado com dados realistas (10 tabelas, 10k+ linhas, 3 anos de histórico), usando a biblioteca Faker.
 
-## Esquema estrela (Gold)
+2.  **Ingestão para a Landing:** O Airflow orquestra a extração dos dados brutos do PostgreSQL e os salva como arquivos CSV na camada **Landing** do MinIO, particionados por data.
 
-O detalhamento das tabelas de origem e do modelo dimensional está em
-[Modelo de Dados](modelo-dados.md).
+3.  **Landing → Bronze:** O Spark lê os dados brutos da Landing, adiciona metadados de auditoria e os converte para o formato **Delta Lake** na camada **Bronze**.
+
+4.  **Bronze → Silver:** O Spark aplica regras de limpeza, tratamento de nulos, padronização e deduplicação, gravando os dados de qualidade na camada **Silver** (Delta Lake).
+
+5.  **Silver → Gold:** O Spark lê os dados da Silver e constrói o **modelo dimensional (Star Schema)**. As dimensões são carregadas com lógica **SCD Tipo 2**, e a tabela de fatos é carregada de forma **incremental** usando checkpoints. Os dados são salvos na camada **Gold** (Delta Lake).
+
+6.  **Gold → Camada de Servir:** Os dados modelados da camada Gold são carregados em um banco de dados PostgreSQL de destino, otimizando o acesso para ferramentas de BI.
+
+7.  **Visualização:** O **Metabase** se conecta ao PostgreSQL de destino para consumir os dados e exibir os KPIs e métricas no dashboard final.

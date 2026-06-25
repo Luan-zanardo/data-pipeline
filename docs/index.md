@@ -1,38 +1,23 @@
-# Data Pipeline
 
-Projeto de **engenharia de dados** que constrói um pipeline completo sobre um
-Data Lake usando a **arquitetura medalhão** (Landing → Bronze → Silver → Gold),
-com geração de massa de dados, orquestração com Airflow, transformação com
-Apache Spark + Delta Lake e disponibilização dos dados finalizados em um banco
-relacional para análise no Metabase.
+## Objetivos e Funcionalidades
 
-## Visão geral
+- **Orquestração Robusta:** Utilizar o Apache Airflow para orquestrar todas as etapas do pipeline de forma automática e idempotente.
+- **Arquitetura Escalável:** Implementar a arquitetura medalhão (Landing, Bronze, Silver, Gold) em um Data Lake sobre object storage (MinIO).
+- **Transformação Eficiente:** Usar o Apache Spark como motor de transformação para processar grandes volumes de dados.
+- **Histórico de Dados:** Manter o histórico das informações nas tabelas de dimensão utilizando a técnica de Slowly Changing Dimension (SCD) Tipo 2.
+- **Carga Incremental:** Otimizar o processamento da tabela de fatos através de um sistema de checkpoints.
+- **Qualidade e Boas Práticas:** Seguir as melhores práticas de engenharia de software, incluindo versionamento com Git, documentação clara e containerização com Docker.
 
-```mermaid
-flowchart LR
-    A[Origem / Geração de Massa] --> B[Landing]
-    B --> C[Bronze]
-    C --> D[Silver]
-    D --> E[Gold]
-    E --> F[(Banco Relacional)]
-    F --> G[Metabase]
-```
+## Navegação
 
-## Sumário da documentação
+Navegue pelas seções no menu lateral para explorar os detalhes do projeto:
 
-- [Arquitetura](arquitetura.md) — as camadas do Data Lake e o fluxo do dado.
-- [Modelo de Dados](modelo-dados.md) — tabelas de origem e esquema estrela.
-- [Etapas do Projeto](etapas.md) — divisão das tarefas e responsáveis.
-- **Pipeline:**
-    - [Geração de Massa](geracao-massa.md) — dados de origem com Faker.
-    - [Orquestração e Landing](orquestracao.md) — Airflow + MinIO.
-    - [Bronze e Silver](bronze-silver.md) — transformação Spark/Delta.
-    - [Gold](gold.md) — modelo dimensional, carga incremental e Postgres.
-    - [Dataviz (Metabase)](metabase.md) — dashboards self-host sobre a Gold.
-- [Como Executar](como-executar.md) — passo a passo para rodar o pipeline.
-- [Entrega](entrega.md) — checklist e prazos da entrega final.
+- **[Arquitetura](arquitetura.md):** Detalhes sobre as camadas do Data Lake e o fluxo do dado.
+- **[Fluxo do Pipeline](pipeline.md):** Descrição passo a passo do processamento dos dados.
+- **[Modelo Dimensional](modelo_dimensional.md):** Documentação do esquema estrela da camada Gold.
+- **[Setup e Execução](setup.md):** Passo a passo para configurar e rodar o pipeline localmente.
 
-## Equipe
+## Equipe e Responsabilidades
 
 | Etapa | Responsável (issue) |
 | ----- | ------------------- |

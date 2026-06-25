@@ -1,6 +1,7 @@
 """DAG: Pipeline de Dados Completo (Data Lake)
 
 Orquestra o pipeline de dados de ponta a ponta dentro do Data Lake:
+0.  Setup: Garante que o banco de dados de origem esteja populado.
 1.  Ingestão da origem para a camada Landing.
 2.  Transformação Spark: Landing -> Bronze -> Silver -> Gold.
 3.  Validação da camada Gold.
@@ -18,6 +19,8 @@ from ingestion.landing import (
     gravar_manifesto,
     listar_tabelas,
 )
+# Função de setup do ambiente de origem
+from setup import populate_source_database_if_empty
 
 PYTHON_CMD = "python"
 
@@ -32,8 +35,16 @@ PYTHON_CMD = "python"
     tags=["pipeline-completo", "ingestao", "spark", "gold"],
 )
 def pipeline_completo():
-    # --- 1. TAREFAS DE INGESTÃO (Python) ---
+    # --- 0. TAREFA DE SETUP DO AMBIENTE DE ORIGEM ---
+    @task(task_id="setup_ambiente_origem")
+    def setup_task():
+        """
+        Executa o script para popular o banco de dados de origem, se necessário.
+        A função é idempotente e não fará nada se o banco já estiver populado.
+        """
+        populate_source_database_if_empty()
 
+    # --- 1. TAREFAS DE INGESTÃO (Python) ---
     @task
     def descobrir_tabelas() -> list[str]:
         """Lista as tabelas de negócio existentes na origem."""
@@ -53,7 +64,6 @@ def pipeline_completo():
         return gravar_manifesto(resultados, data_ingestao)
 
     # --- 2. TAREFAS DE TRANSFORMAÇÃO (Spark via Bash) ---
-
     landing_to_bronze = BashOperator(
         task_id="landing_to_bronze",
         bash_command=f"{PYTHON_CMD} /opt/airflow/src/spark/landing_to_bronze.py --date {{{{ ds }}}} 2>&1",
@@ -74,22 +84,21 @@ def pipeline_completo():
         bash_command=f"{PYTHON_CMD} /opt/airflow/src/spark/validar_gold.py --date {{{{ ds }}}} 2>&1",
     )
 
-    gold_to_postgres = BashOperator(
-        task_id="gold_to_postgres",
-        bash_command=f"{PYTHON_CMD} /opt/airflow/src/spark/gold_to_postgres.py 2>&1",
-    )
-
     # --- 3. DEFINIÇÃO DO FLUXO ---
-
     data_ingestao = "{{ ds }}"
-
+    
+    ambiente_pronto = setup_task()
     tabelas_descobertas = descobrir_tabelas()
+    
+    # A descoberta de tabelas só ocorre após o ambiente de origem estar pronto
+    ambiente_pronto >> tabelas_descobertas
+
     resultados_extracao = extrair_para_landing.partial(data_ingestao=data_ingestao).expand(
         tabela=tabelas_descobertas
     )
     manifesto_gerado = gerar_manifesto(resultados=resultados_extracao, data_ingestao=data_ingestao)
 
     # O fluxo de transformação começa APÓS a conclusão do manifesto
-    manifesto_gerado >> landing_to_bronze >> bronze_to_silver >> silver_to_gold >> validar_gold >> gold_to_postgres
+    manifesto_gerado >> landing_to_bronze >> bronze_to_silver >> silver_to_gold >> validar_gold
 
 pipeline_completo()
