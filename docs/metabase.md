@@ -36,6 +36,25 @@ Aguarde alguns segundos (o healthcheck do Metabase tem `start_period` de 60s) e
 acesse <http://localhost:3000>. No **primeiro acesso**, o Metabase pede a
 criação do usuário administrador.
 
+!!! tip "Pré-requisito: Docker Desktop em execução"
+    O daemon do Docker precisa estar ativo. No Windows, abra o **Docker
+    Desktop** e espere o status ficar **Running** antes de rodar o `docker
+    compose`.
+
+## Operação (comandos Docker)
+
+```bash
+docker compose ps metabase metabase-db   # status e saúde dos containers
+docker compose logs -f metabase          # acompanhar os logs em tempo real
+docker compose stop metabase             # parar (mantém os dados no volume)
+docker compose up -d metabase            # subir novamente
+docker compose down                      # derruba o stack (volumes preservados)
+```
+
+Os dashboards, perguntas e usuários do Metabase ficam no volume
+`metabase-db-data`, então sobrevivem a `stop`/`down`. Para apagar tudo e
+recomeçar do zero, use `docker compose down -v` (remove os volumes).
+
 ## Conectando ao banco de destino (data source)
 
 Os dados Gold ficam no **Postgres de destino** definido em `DEST_DB_*` no
