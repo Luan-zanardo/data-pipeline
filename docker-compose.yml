@@ -5,7 +5,9 @@
 # =============================================================================
 
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.10.5-python3.11
+  # Em vez de usar uma imagem pronta, construímos a nossa própria a partir
+  # do Dockerfile presente neste diretório.
+  build: .
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-metadata:5432/airflow
@@ -13,10 +15,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     PYTHONPATH: /opt/airflow/src
-    # Dependências do Python: Airflow, Spark, Delta, S3, Postgres
-    _PIP_ADDITIONAL_REQUIREMENTS: "psycopg2-binary==2.9.9 s3fs==2025.2.0 pyspark==3.5.0 delta-spark==3.2.0"
-    # Dependências do Spark (JARs): Delta Lake e driver JDBC do Postgres
-    AIRFLOW__SPARK__PACKAGES: "io.delta:delta-spark_2.12:3.2.0,org.postgresql:postgresql:42.7.3"
+    # Dependências do Spark (JARs): Delta Lake, driver JDBC do Postgres e suporte a S3
+    AIRFLOW__SPARK__PACKAGES: "io.delta:delta-spark_2.12:3.2.0,org.postgresql:postgresql:42.7.3,org.apache.hadoop:hadoop-aws:3.3.4"
     # Conexão com o banco de ORIGEM (lida do .env).
     SOURCE_DB_HOST: ${SOURCE_DB_HOST}
     SOURCE_DB_PORT: ${SOURCE_DB_PORT:-5432}
