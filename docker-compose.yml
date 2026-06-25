@@ -163,7 +163,51 @@ services:
       minio-init:
         condition: service_completed_successfully
 
+  # ---------------------------------------------------------------------------
+  # Etapa 6 — Dataviz com Metabase (self-host).
+  # O Metabase consome o Postgres de DESTINO (Gold virtualizada, DEST_DB_*),
+  # configurado como data source pela UI. Aqui ele guarda a própria
+  # configuração (dashboards, usuários) no Postgres dedicado `metabase-db`.
+  # ---------------------------------------------------------------------------
+  metabase-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${MB_DB_USER:-metabase}
+      POSTGRES_PASSWORD: ${MB_DB_PASSWORD:-metabase}
+      POSTGRES_DB: ${MB_DB_NAME:-metabase}
+    volumes:
+      - metabase-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${MB_DB_USER:-metabase}"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  metabase:
+    image: metabase/metabase:latest
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_HOST: metabase-db
+      MB_DB_PORT: 5432
+      MB_DB_DBNAME: ${MB_DB_NAME:-metabase}
+      MB_DB_USER: ${MB_DB_USER:-metabase}
+      MB_DB_PASS: ${MB_DB_PASSWORD:-metabase}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    depends_on:
+      metabase-db:
+        condition: service_healthy
+
 volumes:
   source-db-data:
   airflow-metadata-data:
   minio-data:
+  metabase-db-data:

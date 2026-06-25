@@ -32,8 +32,10 @@ tem uma página detalhada nesta documentação.
 - Virtualizar/carregar para o banco relacional via JDBC.
 - 📄 [Gold](gold.md)
 
-## Etapa 6 — Dataviz com Looker Studio (#10)
+## Etapa 6 — Dataviz com Metabase (#10)
+- Subir o **Metabase self-host** (Docker) e conectá-lo ao Postgres de destino.
 - Construir os dashboards de análise sobre os dados Gold.
+- 📄 [Dataviz (Metabase)](metabase.md)
 
 ## Etapa 7 — Documentação, Apresentação e Entrega (#11)
 - Documentação completa no MkDocs e README caprichado.

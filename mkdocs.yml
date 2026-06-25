@@ -32,6 +32,18 @@ theme:
   icon:
     repo: fontawesome/brands/github-alt
 
+# Navigation structure based on the documentation files created
+nav:
+  - 'Início': 'index.md'
+  - 'Arquitetura': 'arquitetura.md'
+  - 'Fluxo do Pipeline': 'pipeline.md'
+  - 'Modelo Dimensional': 'modelo_dimensional.md'
+  - 'Setup e Execução': 'setup.md'
+
+# Specs internos de design não fazem parte do site publicado.
+exclude_docs: |
+  superpowers/
+
 # Extensions
 markdown_extensions:
   - pymdownx.highlight:
@@ -47,10 +59,3 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
-
-nav:
-  - 'Início': 'index.md'
-  - 'Arquitetura': 'arquitetura.md'
-  - 'Fluxo do Pipeline': 'pipeline.md'
-  - 'Modelo Dimensional': 'modelo_dimensional.md'
-  - 'Setup e Execução': 'setup.md'
