@@ -83,6 +83,41 @@ docker compose up -d             # Airflow: http://localhost:8080 · MinIO: http
 
 O passo a passo completo está em [`docs/como-executar.md`](docs/como-executar.md).
 
+## Dataviz com Metabase (self-host)
+
+A camada de visualização usa o **Metabase** rodando em Docker. Ele guarda a
+própria configuração no Postgres dedicado `metabase-db` e consome o **banco de
+destino** (Gold, `DEST_DB_*`) como fonte de dados.
+
+```bash
+# subir só o Metabase (e o banco dele)
+docker compose up -d metabase
+
+# ou subir o stack inteiro (Airflow + MinIO + Metabase)
+docker compose up -d
+```
+
+1. Acesse **<http://localhost:3000>** (o primeiro acesso pede a criação do
+   usuário admin).
+2. **Admin settings → Databases → Add database → PostgreSQL** e preencha com os
+   valores de `DEST_DB_*` do seu `.env` (host, porta, database, usuário, senha;
+   SSL habilitado).
+3. Com a fonte conectada, monte os dashboards sobre as tabelas Gold
+   (`fato_vendas`, `dim_cliente`, `dim_produto`, `dim_data`).
+
+> O banco de destino precisa estar populado — rode antes o
+> `src/spark/gold_to_postgres.py` (ver [Como Executar](docs/como-executar.md)).
+
+Comandos úteis:
+
+```bash
+docker compose logs -f metabase    # acompanhar logs
+docker compose stop metabase       # parar (mantém os dados no volume)
+docker compose down                # derruba o stack (volumes preservados)
+```
+
+O passo a passo detalhado está em [`docs/metabase.md`](docs/metabase.md).
+
 ## Documentação
 
 A documentação completa é publicada com **MkDocs** e está disponível online em
