@@ -74,6 +74,11 @@ def pipeline_completo():
         bash_command=f"{PYTHON_CMD} /opt/airflow/src/spark/validar_gold.py --date {{{{ ds }}}} 2>&1",
     )
 
+    gold_to_postgres = BashOperator(
+        task_id="gold_to_postgres",
+        bash_command=f"{PYTHON_CMD} /opt/airflow/src/spark/gold_to_postgres.py 2>&1",
+    )
+
     # --- 3. DEFINIÇÃO DO FLUXO ---
 
     data_ingestao = "{{ ds }}"
@@ -85,6 +90,6 @@ def pipeline_completo():
     manifesto_gerado = gerar_manifesto(resultados=resultados_extracao, data_ingestao=data_ingestao)
 
     # O fluxo de transformação começa APÓS a conclusão do manifesto
-    manifesto_gerado >> landing_to_bronze >> bronze_to_silver >> silver_to_gold >> validar_gold
+    manifesto_gerado >> landing_to_bronze >> bronze_to_silver >> silver_to_gold >> validar_gold >> gold_to_postgres
 
 pipeline_completo()

@@ -66,8 +66,7 @@ def processar_tabela_gold(spark: SparkSession, tabela: str, base_path: str, jdbc
 
 
 def main() -> None:
-    base_datalake_path = os.environ.get("LANDING_PATH", "s3a://datalake/landing").split("://")[1].split("/")[0]
-    base_datalake = f"s3a://{base_datalake_path}"
+    base_datalake = f"s3a://{os.environ.get('DATALAKE_BUCKET', 'datalake')}"
 
     spark = get_spark_session("GoldToPostgres")
 
