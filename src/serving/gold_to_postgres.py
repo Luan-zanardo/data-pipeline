@@ -18,11 +18,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger("gold_to_postgres")
 
 def get_db_properties():
-    """Retorna as propriedades de conexão JDBC para o banco de destino."""
+    """
+    Retorna as propriedades de conexão JDBC para o banco de destino.
+    Define timeouts agressivos para lidar com a latência e o connection pooling
+    de serviços de banco de dados na nuvem (ex: Supabase).
+    """
     return {
         "user": os.environ.get("DEST_DB_USER", "postgres"),
         "password": os.environ.get("DEST_DB_PASSWORD", "postgres"),
-        "driver": "org.postgresql.Driver"
+        "driver": "org.postgresql.Driver",
+        "connectTimeout": "60",      # Timeout para estabelecer a conexão (em segundos)
+        "socketTimeout": "120",      # Timeout para operações de leitura/escrita (em segundos)
+        "loginTimeout": "60",        # Timeout para a fase de login (em segundos)
     }
 
 def main() -> None:
@@ -33,7 +40,6 @@ def main() -> None:
     db_url = f"jdbc:postgresql://{os.environ.get('DEST_DB_HOST', 'postgres-serving')}:{os.environ.get('DEST_DB_PORT', '5432')}/{os.environ.get('DEST_DB_NAME', 'postgres')}"
     db_properties = get_db_properties()
 
-    # Lista de tabelas na camada Gold a serem carregadas
     tabelas_gold = ["dim_cliente", "dim_produto", "dim_data", "fato_vendas"]
 
     logger.info(f"Iniciando carga da camada Gold para o banco de dados de destino em {db_url}")
@@ -45,13 +51,11 @@ def main() -> None:
 
             df_gold = spark.read.format("delta").load(path_gold)
 
-            # Para as dimensões SCD-2, carregamos apenas a visão atual dos dados
             if "is_current" in df_gold.columns:
                 df_gold = df_gold.filter(col("is_current") == True)
 
             logger.info(f"Gravando tabela '{tabela}' no PostgreSQL...")
             
-            # Grava os dados no PostgreSQL, sobrescrevendo a tabela
             (df_gold.write
                 .jdbc(url=db_url,
                       table=tabela,

@@ -18,19 +18,19 @@ x-airflow-common: &airflow-common
     # Dependências do Spark (JARs): Delta Lake, driver JDBC do Postgres e suporte a S3
     AIRFLOW__SPARK__PACKAGES: "io.delta:delta-spark_2.12:3.2.0,org.postgresql:postgresql:42.7.3,org.apache.hadoop:hadoop-aws:3.3.4"
     # Conexão com o banco de ORIGEM (lida do .env).
-    SOURCE_DB_HOST: ${SOURCE_DB_HOST:-postgres-source}
-    SOURCE_DB_PORT: ${SOURCE_DB_PORT:-5432}
-    SOURCE_DB_NAME: ${SOURCE_DB_NAME:-postgres}
-    SOURCE_DB_USER: ${SOURCE_DB_USER:-postgres}
-    SOURCE_DB_PASSWORD: ${SOURCE_DB_PASSWORD:-postgres}
-    SOURCE_DB_SSLMODE: ${SOURCE_DB_SSLMODE:-disable}
+    SOURCE_DB_HOST: ${SOURCE_DB_HOST}
+    SOURCE_DB_PORT: ${SOURCE_DB_PORT}
+    SOURCE_DB_NAME: ${SOURCE_DB_NAME}
+    SOURCE_DB_USER: ${SOURCE_DB_USER}
+    SOURCE_DB_PASSWORD: ${SOURCE_DB_PASSWORD}
+    SOURCE_DB_SSLMODE: ${SOURCE_DB_SSLMODE}
     # Conexão com o banco de DESTINO (lida do .env).
     DEST_DB_HOST: ${DEST_DB_HOST}
-    DEST_DB_PORT: ${DEST_DB_PORT:-5432}
-    DEST_DB_NAME: ${DEST_DB_NAME:-postgres}
+    DEST_DB_PORT: ${DEST_DB_PORT}
+    DEST_DB_NAME: ${DEST_DB_NAME}
     DEST_DB_USER: ${DEST_DB_USER}
     DEST_DB_PASSWORD: ${DEST_DB_PASSWORD}
-    DEST_DB_SSLMODE: ${DEST_DB_SSLMODE:-require}
+    DEST_DB_SSLMODE: ${DEST_DB_SSLMODE}
     # Destino da Landing no Data Lake (MinIO).
     LANDING_PATH: ${LANDING_PATH:-s3://datalake/landing}
     # Object storage do Data Lake (MinIO).
@@ -48,23 +48,6 @@ x-airflow-common: &airflow-common
       condition: service_healthy
 
 services:
-  postgres-source:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5433:5432" # Mapeia a porta 5433 do host para a 5432 do contêiner
-    volumes:
-      - source-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 10s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -163,51 +146,6 @@ services:
       minio-init:
         condition: service_completed_successfully
 
-  # ---------------------------------------------------------------------------
-  # Etapa 6 — Dataviz com Metabase (self-host).
-  # O Metabase consome o Postgres de DESTINO (Gold virtualizada, DEST_DB_*),
-  # configurado como data source pela UI. Aqui ele guarda a própria
-  # configuração (dashboards, usuários) no Postgres dedicado `metabase-db`.
-  # ---------------------------------------------------------------------------
-  metabase-db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: ${MB_DB_USER:-metabase}
-      POSTGRES_PASSWORD: ${MB_DB_PASSWORD:-metabase}
-      POSTGRES_DB: ${MB_DB_NAME:-metabase}
-    volumes:
-      - metabase-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${MB_DB_USER:-metabase}"]
-      interval: 10s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-
-  metabase:
-    image: metabase/metabase:latest
-    ports:
-      - "3000:3000"
-    environment:
-      MB_DB_TYPE: postgres
-      MB_DB_HOST: metabase-db
-      MB_DB_PORT: 5432
-      MB_DB_DBNAME: ${MB_DB_NAME:-metabase}
-      MB_DB_USER: ${MB_DB_USER:-metabase}
-      MB_DB_PASS: ${MB_DB_PASSWORD:-metabase}
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
-    depends_on:
-      metabase-db:
-        condition: service_healthy
-
 volumes:
-  source-db-data:
   airflow-metadata-data:
   minio-data:
-  metabase-db-data:
