@@ -22,6 +22,7 @@ nav:
       - Orquestração e Landing: orquestracao.md
       - Bronze e Silver: bronze-silver.md
       - Gold: gold.md
+      - Dataviz (Metabase): metabase.md
   - Como Executar: como-executar.md
   - Entrega: entrega.md
 

@@ -2,7 +2,7 @@
 
 A camada Gold transforma a Silver num **modelo dimensional (esquema estrela)**
 pronto para análise, com **carga incremental** e **histórico (SCD2)**, e depois
-**virtualiza** os dados em um Postgres de destino para o Looker Studio.
+**virtualiza** os dados em um Postgres de destino para o Metabase.
 
 Os scripts ficam em `src/spark/` e usam Delta Lake. A raiz do Data Lake vem de
 `DATALAKE_PATH` (padrão: `datalake`).
@@ -46,7 +46,7 @@ Script:
 [`src/spark/gold_to_postgres.py`](https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/gold_to_postgres.py)
 
 Lê as tabelas Delta da Gold e as grava em um **Postgres de destino via JDBC**,
-disponibilizando o modelo dimensional para o Looker Studio. Para as dimensões
+disponibilizando o modelo dimensional para o Metabase. Para as dimensões
 SCD2 (`dim_cliente`, `dim_produto`), envia apenas os registros vigentes
 (`is_current = true`).
 

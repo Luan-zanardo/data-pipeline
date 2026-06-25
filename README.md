@@ -13,8 +13,8 @@ Delta Lake e disponibilização dos dados em um banco relacional para análise.
 ## Arquitetura
 
 ```
-Postgres origem → Landing → Bronze → Silver → Gold → Postgres destino → Looker Studio
-   (Airflow)       (MinIO)   (Spark)  (Spark)  (Spark)     (JDBC)
+Postgres origem → Landing → Bronze → Silver → Gold → Postgres destino → Metabase
+   (Airflow)       (MinIO)   (Spark)  (Spark)  (Spark)     (JDBC)      (self-host)
 ```
 
 | Camada  | Formato    | Conteúdo                                       |
@@ -31,7 +31,7 @@ Postgres origem → Landing → Bronze → Silver → Gold → Postgres destino 
 - **MinIO** (Docker, S3-compatible) — object storage do Data Lake
 - **Apache Spark / PySpark** + **Delta Lake** — transformação entre camadas
 - **PostgreSQL** (Supabase) — banco de origem e de destino da Gold
-- **Looker Studio** — visualização
+- **Metabase** (Docker, self-host) — visualização e dashboards sobre a Gold
 - **MkDocs (Material)** — documentação
 
 ## Estrutura do repositório
@@ -78,7 +78,7 @@ python src/spark/gold_to_postgres.py
 Para o fluxo orquestrado com Airflow + MinIO:
 
 ```bash
-docker compose up -d             # UI: http://localhost:8080 · MinIO: http://localhost:9001
+docker compose up -d             # Airflow: http://localhost:8080 · MinIO: http://localhost:9001 · Metabase: http://localhost:3000
 ```
 
 O passo a passo completo está em [`docs/como-executar.md`](docs/como-executar.md).
@@ -110,5 +110,5 @@ mkdocs gh-deploy
 | 3 | Orquestração e Camada Landing | #5 |
 | 4 | Transformação Spark (Bronze e Silver) | #6 |
 | 5 | Modelagem, Carga Incremental e Virtualização (Gold) | #9 |
-| 6 | Dataviz com Looker Studio | #10 |
+| 6 | Dataviz com Metabase (self-host) | #10 |
 | 7 | Documentação, Apresentação e Entrega | #11 |
