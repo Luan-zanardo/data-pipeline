@@ -1,40 +1,56 @@
-site_name: Data Pipeline
-site_description: Pipeline de dados com arquitetura medalhão (Landing → Bronze → Silver → Gold)
+site_name: Pipeline de Dados - Documentação
+site_url: https://Luan-zanardo.github.io/data-pipeline/
+repo_url: https://github.com/Luan-zanardo/data-pipeline
+repo_name: Luan-zanardo/data-pipeline
+edit_uri: edit/main/docs/
+
 theme:
   name: material
-  language: pt
   palette:
+    # Palette toggle for light mode
     - scheme: default
-      primary: indigo
-      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   features:
+    - navigation.tabs
     - navigation.sections
+    - toc.integrate
     - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
     - content.code.copy
+  language: en
+  icon:
+    repo: fontawesome/brands/github-alt
+
+# Extensions
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.mark
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
-  - Início: index.md
-  - Arquitetura: arquitetura.md
-  - Modelo de Dados: modelo-dados.md
-  - Etapas do Projeto: etapas.md
-  - Pipeline:
-      - Geração de Massa: geracao-massa.md
-      - Orquestração e Landing: orquestracao.md
-      - Bronze e Silver: bronze-silver.md
-      - Gold: gold.md
-  - Como Executar: como-executar.md
-  - Entrega: entrega.md
-
-# Specs internos de design não fazem parte do site publicado.
-exclude_docs: |
-  superpowers/
-
-markdown_extensions:
-  - admonition
-  - tables
-  - pymdownx.highlight
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+  - 'Início': 'index.md'
+  - 'Arquitetura': 'arquitetura.md'
+  - 'Fluxo do Pipeline': 'pipeline.md'
+  - 'Modelo Dimensional': 'modelo_dimensional.md'
+  - 'Setup e Execução': 'setup.md'

@@ -1,115 +1,141 @@
-# Data Pipeline
+# Pipeline de Dados com Airflow, Spark e Delta Lake
 
-[![Documentação](https://img.shields.io/badge/docs-online-blue?logo=materialformkdocs&logoColor=white)](https://luan-zanardo.github.io/data-pipeline/)
-[![MkDocs Material](https://img.shields.io/badge/MkDocs-Material-526CFE?logo=materialformkdocs&logoColor=white)](https://squidfunk.github.io/mkdocs-material/)
+## 📜 Visão Geral do Projeto
 
-📖 **Documentação online:** <https://luan-zanardo.github.io/data-pipeline/>
+Este projeto implementa um pipeline de dados completo e moderno, construído para atender aos requisitos do trabalho final da disciplina de Engenharia de Dados. O pipeline orquestra a ingestão, transformação e armazenamento de dados seguindo as melhores práticas de mercado, como a arquitetura medalhão e o uso de ferramentas open-source robustas.
 
-Pipeline de **engenharia de dados** construído sobre um Data Lake com
-**arquitetura medalhão** (Landing → Bronze → Silver → Gold), incluindo geração
-de massa de dados, orquestração com Airflow, transformação com Apache Spark +
-Delta Lake e disponibilização dos dados em um banco relacional para análise.
+O fluxo de dados simula um ambiente de e-commerce, partindo de um banco de dados relacional de origem, passando por um Data Lake em object storage, e finalizando em um modelo dimensional pronto para ser consumido por ferramentas de Business Intelligence.
 
-## Arquitetura
+---
 
+## 🏛️ Arquitetura
+
+A arquitetura do projeto é baseada em contêineres Docker e segue o padrão da arquitetura medalhão para o tratamento dos dados no Data Lake.
+
+```mermaid
+graph TD
+    subgraph "Ambiente de Origem"
+        A[PostgreSQL - Source DB]
+    end
+
+    subgraph "Orquestração (Airflow)"
+        B(DAG: pipeline_completo)
+        B -- 1. Ingestão --> C{extrair_para_landing}
+    end
+
+    subgraph "Data Lake (MinIO)"
+        subgraph "Landing Layer (Raw)"
+            D[CSV Bruto]
+        end
+        subgraph "Bronze Layer (Enriched)"
+            E[Delta Table]
+        end
+        subgraph "Silver Layer (Cleaned)"
+            F[Delta Table]
+        end
+        subgraph "Gold Layer (Dimensional)"
+            G[Fatos e Dimensões em Delta]
+        end
+    end
+    
+    subgraph "Motor de Transformação (Spark)"
+        H[PySpark Scripts]
+    end
+
+    A -- Dados --> C
+    C -- Grava CSV --> D
+    B -- 2. Landing > Bronze --> H
+    H -- Lê --> D
+    H -- Grava --> E
+    B -- 3. Bronze > Silver --> H
+    H -- Lê --> E
+    H -- Grava --> F
+    B -- 4. Silver > Gold --> H
+    H -- Lê --> F
+    H -- Grava --> G
 ```
-Postgres origem → Landing → Bronze → Silver → Gold → Postgres destino → Looker Studio
-   (Airflow)       (MinIO)   (Spark)  (Spark)  (Spark)     (JDBC)
-```
 
-| Camada  | Formato    | Conteúdo                                       |
-| ------- | ---------- | ---------------------------------------------- |
-| Landing | CSV bruto  | Dados como vieram da origem                    |
-| Bronze  | Delta Lake | Dados padronizados, com auditoria de origem    |
-| Silver  | Delta Lake | Dados limpos, tipados e deduplicados           |
-| Gold    | Delta Lake | Modelo dimensional (fato + dimensões SCD2)     |
+---
 
-## Tecnologias
+## 🛠️ Tecnologias Utilizadas
 
-- **Python** + **Faker** — geração de massa de dados
-- **Apache Airflow** (Docker) — orquestração e agendamento da ingestão
-- **MinIO** (Docker, S3-compatible) — object storage do Data Lake
-- **Apache Spark / PySpark** + **Delta Lake** — transformação entre camadas
-- **PostgreSQL** (Supabase) — banco de origem e de destino da Gold
-- **Looker Studio** — visualização
-- **MkDocs (Material)** — documentação
+- **Orquestração:** Apache Airflow
+- **Motor de Transformação:** Apache Spark (PySpark)
+- **Data Lake Storage:** MinIO (Object Storage S3-compatible)
+- **Formato dos Dados:** Delta Lake
+- **Banco de Dados de Origem:** PostgreSQL
+- **Containerização:** Docker & Docker Compose
+- **Documentação:** MkDocs
 
-## Estrutura do repositório
+---
 
-```
-data-pipeline/
-├── generate_mock_landing.py     # geração de massa (Faker) direto na Landing
-├── docker-compose.yml           # Airflow + MinIO
-├── .env.example                 # variáveis de ambiente (copiar para .env)
-├── dags/
-│   └── pipeline_completo.py     # DAG principal: ingestão + Spark + Gold + Postgres
-├── src/
-│   ├── ingestion/landing.py     # extração Postgres -> CSV bruto (reutilizável)
-│   └── spark/
-│       ├── utils.py             # SparkSession centralizada (Delta Lake + S3A/MinIO)
-│       ├── landing_to_bronze.py # Landing -> Bronze (Delta, particionado por data)
-│       ├── bronze_to_silver.py  # Bronze -> Silver (tipagem, limpeza, MERGE/upsert)
-│       ├── silver_to_gold.py    # Silver -> Gold (estrela, SCD2, carga incremental)
-│       ├── gold_to_postgres.py  # Gold -> Postgres destino (JDBC)
-│       └── validar_gold.py      # validação/métricas da Gold
-└── docs/                        # documentação MkDocs
-```
+## 🚀 Como Configurar e Executar o Projeto
 
-## Como executar
+Siga os passos abaixo para configurar e executar o ambiente completo do pipeline de dados.
 
-```bash
+### Pré-requisitos
+
+- Git
+- Docker
+- Docker Compose
+
+### 1. Clonar o Repositório
+
+```sh
 git clone https://github.com/Luan-zanardo/data-pipeline.git
 cd data-pipeline
-pip install -r requirements.txt
-cp .env.example .env             # preencha as senhas
-
-# 1. Geração de massa na Landing (Etapa 2)
-python generate_mock_landing.py
-
-# 2. Transformação das camadas (Etapas 4 e 5)
-python src/spark/landing_to_bronze.py
-python src/spark/bronze_to_silver.py
-python src/spark/silver_to_gold.py
-
-# 3. Validação e (opcional) carga no Postgres de destino
-python src/spark/validar_gold.py
-python src/spark/gold_to_postgres.py
 ```
 
-Para o fluxo orquestrado com Airflow + MinIO:
+### 2. Configurar Variáveis de Ambiente
 
-```bash
-docker compose up -d             # UI: http://localhost:8080 · MinIO: http://localhost:9001
+O projeto utiliza um arquivo `.env` para gerenciar as credenciais. Crie o seu a partir do arquivo de exemplo:
+
+```sh
+cp .env.example .env
+```
+> **Nota:** As configurações padrão no `.env.example` já estão ajustadas para o ambiente Docker local e não precisam de alteração para uma execução padrão.
+
+### 3. Construir e Iniciar os Contêineres
+
+Este comando irá construir a imagem customizada do Airflow (com Java e dependências) e iniciar todos os serviços (Airflow, Spark, MinIO, PostgreSQL).
+
+```sh
+docker-compose up -d --build
 ```
 
-O passo a passo completo está em [`docs/como-executar.md`](docs/como-executar.md).
+### 4. Acessar o Airflow e Executar o Pipeline
 
-## Documentação
+1.  **Acesse a UI do Airflow:** Abra seu navegador e acesse `http://localhost:8080`.
+2.  **Login:** Use o usuário `admin` e a senha `admin` (ou o que estiver configurado no seu `.env`).
+3.  **Ative e Execute a DAG:**
+    - Encontre a DAG `pipeline_completo` na lista.
+    - Ative-a clicando no botão de toggle.
+    - Clique no botão "Play" (▶️) para acionar uma nova execução (Run).
 
-A documentação completa é publicada com **MkDocs** e está disponível online em
-**<https://luan-zanardo.github.io/data-pipeline/>**.
+Na primeira execução, a tarefa `setup_ambiente_origem` irá popular o banco de dados de origem com 100.000 registros. Isso pode levar alguns minutos. Nas execuções seguintes, essa etapa será pulada, e o pipeline executará apenas a lógica de ingestão e transformação incremental.
 
-Para rodar localmente:
+---
 
-```bash
-pip install mkdocs-material
-mkdocs serve     # http://127.0.0.1:8000
+## 📂 Estrutura do Projeto
+
+```
+.
+├── dags/                 # Definições das DAGs do Airflow
+│   └── pipeline_completo.py
+├── src/                  # Código fonte do projeto
+│   ├── ingestion/        # Lógica de ingestão da origem para a Landing
+│   ├── spark/            # Scripts PySpark para as transformações
+│   └── setup.py          # Lógica para popular o banco de origem
+├── datalake/             # (Local) Mount para o Data Lake (não versionado)
+├── docs/                 # Arquivos da documentação MkDocs
+├── .env.example          # Exemplo de arquivo de configuração
+├── docker-compose.yml    # Orquestração dos serviços Docker
+├── Dockerfile            # Imagem customizada do Airflow
+└── mkdocs.yml            # Configuração do MkDocs
 ```
 
-Para publicar/atualizar o site no GitHub Pages:
+---
 
-```bash
-mkdocs gh-deploy
-```
+## 📄 Licença
 
-## Etapas e responsáveis
-
-| Etapa | Descrição | Issue |
-| ----- | --------- | ----- |
-| 1 | Data Lake Base | #4 |
-| 2 | Origem dos Dados e Geração de Massa | #2 |
-| 3 | Orquestração e Camada Landing | #5 |
-| 4 | Transformação Spark (Bronze e Silver) | #6 |
-| 5 | Modelagem, Carga Incremental e Virtualização (Gold) | #9 |
-| 6 | Dataviz com Looker Studio | #10 |
-| 7 | Documentação, Apresentação e Entrega | #11 |
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
