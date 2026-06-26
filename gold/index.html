@@ -6,33 +6,30 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Pipeline de dados com arquitetura medalhão (Landing → Bronze → Silver → Gold)">
       
       
+        <link rel="canonical" href="https://Luan-zanardo.github.io/data-pipeline/gold/">
       
       
         <link rel="prev" href="../bronze-silver/">
       
       
-        <link rel="next" href="../como-executar/">
-      
-      
-        
+        <link rel="next" href="../metabase/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
     
     
       
-        <title>Gold - Data Pipeline</title>
+        <title>Gold - Pipeline de Dados - Documentação</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -51,10 +48,13 @@
       
     
     
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
     <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
+    
     
     
   </head>
@@ -90,9 +90,9 @@
 
   
 
-<header class="md-header md-header--shadow" data-md-component="header">
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Cabeçalho">
-    <a href=".." title="Data Pipeline" class="md-header__button md-logo" aria-label="Data Pipeline" data-md-component="logo">
+    <a href=".." title="Pipeline de Dados - Documentação" class="md-header__button md-logo" aria-label="Pipeline de Dados - Documentação" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            Data Pipeline
+            Pipeline de Dados - Documentação
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -125,7 +125,21 @@
     
     
     
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Alternar para modo escuro"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Alternar para modo escuro" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Alternar para modo claro"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Alternar para modo claro" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
     
   
 </form>
@@ -161,6 +175,8 @@
         </button>
       </nav>
       
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
     </form>
     <div class="md-search__output">
       <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
@@ -177,15 +193,157 @@
       
     
     
+      <div class="md-header__source">
+        <a href="https://github.com/Luan-zanardo/data-pipeline" title="Ir ao repositório" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M202.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1M496 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2m-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3m-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Luan-zanardo/data-pipeline
+  </div>
+</a>
+      </div>
+    
   </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Abas" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Início
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../etapas/" class="md-tabs__link">
+          
+  
+  
+  Projeto
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../setup/" class="md-tabs__link">
+          
+  
+  
+  Execução
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../geracao-massa/" class="md-tabs__link">
+          
+  
+  
+  Pipeline
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../metabase/" class="md-tabs__link">
+          
+  
+  
+  Visualização
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../entrega/" class="md-tabs__link">
+          
+  
+  
+  Entrega
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
   
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
-        
-          
         
       
       <main class="md-main" data-md-component="main">
@@ -199,17 +357,33 @@
                     
 
 
+  
 
-<nav class="md-nav md-nav--primary" aria-label="Navegação" data-md-level="0">
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navegação" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Data Pipeline" class="md-nav__button md-logo" aria-label="Data Pipeline" data-md-component="logo">
+    <a href=".." title="Pipeline de Dados - Documentação" class="md-nav__button md-logo" aria-label="Pipeline de Dados - Documentação" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    Data Pipeline
+    Pipeline de Dados - Documentação
   </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Luan-zanardo/data-pipeline" title="Ir ao repositório" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M202.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1M496 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2m-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3m-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Luan-zanardo/data-pipeline
+  </div>
+</a>
+    </div>
   
   <ul class="md-nav__list" data-md-scrollfix>
     
@@ -225,14 +399,9 @@
   
   
   <span class="md-ellipsis">
-    
-  
     Início
-  
-
     
   </span>
-  
   
 
       </a>
@@ -246,56 +415,45 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../arquitetura/" class="md-nav__link">
+    
+    
+    
+    
+      
+      
         
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
-    
-  
-    Arquitetura
-  
-
+    Projeto
     
   </span>
   
-  
 
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../modelo-dados/" class="md-nav__link">
+            <span class="md-nav__icon md-icon"></span>
+          </label>
         
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Modelo de Dados
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Projeto
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
   
   
   
@@ -306,17 +464,185 @@
   
   
   <span class="md-ellipsis">
-    
-  
     Etapas do Projeto
-  
-
     
   </span>
   
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arquitetura/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Arquitetura
+    
+  </span>
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fluxo do Pipeline
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modelo-dados/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Modelo de Dados
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Execução
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Execução
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Setup e Execução
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../como-executar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Como Executar
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -337,41 +663,35 @@
         
         
       
+      
+        
+      
     
     
     <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
-    
-  
     Pipeline
-  
-
     
   </span>
-  
   
 
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
-            
-  
-    Pipeline
-  
-
+            Pipeline
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -387,14 +707,9 @@
   
   
   <span class="md-ellipsis">
-    
-  
     Geração de Massa
-  
-
     
   </span>
-  
   
 
       </a>
@@ -415,14 +730,9 @@
   
   
   <span class="md-ellipsis">
-    
-  
     Orquestração e Landing
-  
-
     
   </span>
-  
   
 
       </a>
@@ -443,14 +753,9 @@
   
   
   <span class="md-ellipsis">
-    
-  
     Bronze e Silver
-  
-
     
   </span>
-  
   
 
       </a>
@@ -480,14 +785,9 @@
   
   
   <span class="md-ellipsis">
-    
-  
     Gold
-  
-
     
   </span>
-  
   
 
           <span class="md-nav__icon md-icon"></span>
@@ -498,14 +798,9 @@
   
   
   <span class="md-ellipsis">
-    
-  
     Gold
-  
-
     
   </span>
-  
   
 
       </a>
@@ -528,9 +823,7 @@
         <li class="md-nav__item">
   <a href="#silver-gold" class="md-nav__link">
     <span class="md-ellipsis">
-      
-        Silver → Gold
-      
+      Silver → Gold
     </span>
   </a>
   
@@ -540,9 +833,7 @@
           <li class="md-nav__item">
   <a href="#carga-incremental-checkpoint" class="md-nav__link">
     <span class="md-ellipsis">
-      
-        Carga incremental (checkpoint)
-      
+      Carga incremental (checkpoint)
     </span>
   </a>
   
@@ -556,9 +847,7 @@
         <li class="md-nav__item">
   <a href="#gold-postgres-virtualizacao" class="md-nav__link">
     <span class="md-ellipsis">
-      
-        Gold → Postgres (virtualização)
-      
+      Gold → Postgres (virtualização)
     </span>
   </a>
   
@@ -567,9 +856,7 @@
         <li class="md-nav__item">
   <a href="#validacao-da-gold" class="md-nav__link">
     <span class="md-ellipsis">
-      
-        Validação da Gold
-      
+      Validação da Gold
     </span>
   </a>
   
@@ -597,23 +884,69 @@
   
   
   
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Visualização
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Visualização
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../como-executar/" class="md-nav__link">
+      <a href="../metabase/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    
-  
-    Como Executar
-  
-
+    Metabase
     
   </span>
   
-  
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -624,23 +957,69 @@
   
   
   
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Entrega
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Entrega
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../entrega/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    
-  
     Entrega
-  
-
     
   </span>
   
-  
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -652,96 +1031,22 @@
               </div>
             
             
-              
-              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
-                <div class="md-sidebar__scrollwrap">
-                  <div class="md-sidebar__inner">
-                    
-
-<nav class="md-nav md-nav--secondary" aria-label="Índice">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Índice
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#silver-gold" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Silver → Gold
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Silver → Gold">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#carga-incremental-checkpoint" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Carga incremental (checkpoint)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#gold-postgres-virtualizacao" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gold → Postgres (virtualização)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validacao-da-gold" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validação da Gold
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-                  </div>
-                </div>
-              </div>
-            
           
           
             <div class="md-content" data-md-component="content">
-              
               <article class="md-content__inner md-typeset">
                 
                   
 
 
+  
+  
+
 
 <h1 id="gold-modelagem-carga-incremental-e-virtualizacao-etapa-5">Gold: Modelagem, Carga Incremental e Virtualização (Etapa 5)</h1>
 <p>A camada Gold transforma a Silver num <strong>modelo dimensional (esquema estrela)</strong>
 pronto para análise, com <strong>carga incremental</strong> e <strong>histórico (SCD2)</strong>, e depois
-<strong>virtualiza</strong> os dados em um Postgres de destino para o Looker Studio.</p>
+<strong>virtualiza</strong> os dados em um Postgres de destino para o Metabase.</p>
 <p>Os scripts ficam em <code>src/spark/</code> e usam Delta Lake. A raiz do Data Lake vem de
 <code>DATALAKE_PATH</code> (padrão: <code>datalake</code>).</p>
 <h2 id="silver-gold">Silver → Gold</h2>
@@ -765,7 +1070,7 @@ pronto para análise, com <strong>carga incremental</strong> e <strong>históric
   incremental por checkpoint</strong> (ver abaixo). Liga-se às dimensões pelas
   <em>surrogate keys</em> vigentes (<code>is_current = true</code>).</li>
 </ul>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>src/spark/silver_to_gold.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>src/spark/silver_to_gold.py
 </code></pre></div>
 <h3 id="carga-incremental-checkpoint">Carga incremental (checkpoint)</h3>
 <p>A <code>fato_vendas</code> não reprocessa tudo a cada execução. O script mantém um
@@ -777,11 +1082,11 @@ que nada seja inserido em duplicidade. Isso torna a carga <strong>idempotente</s
 <p>Script:
 <a href="https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/gold_to_postgres.py"><code>src/spark/gold_to_postgres.py</code></a></p>
 <p>Lê as tabelas Delta da Gold e as grava em um <strong>Postgres de destino via JDBC</strong>,
-disponibilizando o modelo dimensional para o Looker Studio. Para as dimensões
+disponibilizando o modelo dimensional para o Metabase. Para as dimensões
 SCD2 (<code>dim_cliente</code>, <code>dim_produto</code>), envia apenas os registros vigentes
 (<code>is_current = true</code>).</p>
 <p>Requer as variáveis <code>DEST_DB_*</code> configuradas no <code>.env</code>:</p>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>src/spark/gold_to_postgres.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>src/spark/gold_to_postgres.py
 </code></pre></div>
 <p>O driver JDBC do Postgres é baixado automaticamente via
 <code>spark.jars.packages</code> (<code>org.postgresql:postgresql:42.7.4</code>).</p>
@@ -794,14 +1099,14 @@ duas versões <code>is_current</code> para a mesma chave natural) e existência 
 da fato. Falha com código de saída ≠ 0 se algo estiver errado.</p>
 <p>Para comprovar <strong>idempotência</strong>, salve um snapshot, rode o <code>silver_to_gold</code>
 novamente e compare:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># 1. snapshot dos counts atuais</span>
-python<span class="w"> </span>src/spark/validar_gold.py<span class="w"> </span>--save-snapshot<span class="w"> </span>snapshot.json
-
-<span class="c1"># 2. reprocessa a Gold (não deve duplicar nada)</span>
-python<span class="w"> </span>src/spark/silver_to_gold.py
-
-<span class="c1"># 3. compara — os counts devem bater</span>
-python<span class="w"> </span>src/spark/validar_gold.py<span class="w"> </span>--compare-snapshot<span class="w"> </span>snapshot.json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># 1. snapshot dos counts atuais</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>python<span class="w"> </span>src/spark/validar_gold.py<span class="w"> </span>--save-snapshot<span class="w"> </span>snapshot.json
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># 2. reprocessa a Gold (não deve duplicar nada)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>python<span class="w"> </span>src/spark/silver_to_gold.py
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># 3. compara — os counts devem bater</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>python<span class="w"> </span>src/spark/validar_gold.py<span class="w"> </span>--compare-snapshot<span class="w"> </span>snapshot.json
 </code></pre></div>
 
 
@@ -820,6 +1125,8 @@ python<span class="w"> </span>src/spark/validar_gold.py<span class="w"> </span>-
             </div>
           
           
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
         
@@ -857,11 +1164,10 @@ python<span class="w"> </span>src/spark/validar_gold.py<span class="w"> </span>-
     
     
       
-      
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "Mais 1 nesta p\u00e1gina", "search.result.more.other": "Mais # nesta p\u00e1gina", "search.result.none": "Nenhum resultado encontrado", "search.result.one": "1 resultado encontrado", "search.result.other": "# resultados encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "toc.integrate", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado para \u00e1rea de transfer\u00eancia", "clipboard.copy": "Copiar para \u00e1rea de transfer\u00eancia", "search.result.more.one": "Mais 1 nesta p\u00e1gina", "search.result.more.other": "Mais # nesta p\u00e1gina", "search.result.none": "Nenhum resultado encontrado", "search.result.one": "1 resultado encontrado", "search.result.other": "# resultados encontrados", "search.result.placeholder": "Digite para iniciar a busca", "search.result.term.missing": "Ausente", "select.version": "Selecione a vers\u00e3o"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>

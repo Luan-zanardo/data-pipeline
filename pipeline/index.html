@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://Luan-zanardo.github.io/data-pipeline/arquitetura/">
+        <link rel="canonical" href="https://Luan-zanardo.github.io/data-pipeline/pipeline/">
       
       
-        <link rel="prev" href="../etapas/">
+        <link rel="prev" href="../arquitetura/">
       
       
-        <link rel="next" href="../pipeline/">
+        <link rel="next" href="../modelo-dados/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Arquitetura - Pipeline de Dados - Documentação</title>
+        <title>Fluxo do Pipeline - Pipeline de Dados - Documentação</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#componentes-principais" class="md-skip">
+        <a href="#fluxo-do-pipeline-de-dados" class="md-skip">
           Ir para o conteúdo
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Arquitetura
+              Fluxo do Pipeline
             
           </span>
         </div>
@@ -484,6 +484,29 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../arquitetura/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Arquitetura
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -493,13 +516,15 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
   
   
   <span class="md-ellipsis">
-    Arquitetura
+    Fluxo do Pipeline
     
   </span>
   
@@ -512,7 +537,7 @@
   
   
   <span class="md-ellipsis">
-    Arquitetura
+    Fluxo do Pipeline
     
   </span>
   
@@ -525,6 +550,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -533,18 +560,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#componentes-principais" class="md-nav__link">
+  <a href="#1-camada-landing-raw-data" class="md-nav__link">
     <span class="md-ellipsis">
-      Componentes Principais
+      1. Camada Landing (Raw Data)
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#jornada-do-dado" class="md-nav__link">
+  <a href="#2-camada-bronze-enriched" class="md-nav__link">
     <span class="md-ellipsis">
-      Jornada do Dado
+      2. Camada Bronze (Enriched)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-camada-silver-cleaned-conformed" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Camada Silver (Cleaned &amp; Conformed)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-camada-gold-curated-modeled" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Camada Gold (Curated &amp; Modeled)
     </span>
   </a>
   
@@ -554,29 +599,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../pipeline/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Fluxo do Pipeline
-    
-  </span>
-  
-
-      </a>
     </li>
   
 
@@ -1015,57 +1037,66 @@
   
 
 
-  <h1>Arquitetura</h1>
-
-<h2 id="componentes-principais">Componentes Principais</h2>
+<h1 id="fluxo-do-pipeline-de-dados">Fluxo do Pipeline de Dados</h1>
+<p>O pipeline é orquestrado por uma única DAG no Airflow (<code>pipeline_completo</code>) e é responsável por mover e transformar os dados através das quatro camadas da arquitetura medalhão.</p>
+<h2 id="1-camada-landing-raw-data">1. Camada Landing (Raw Data)</h2>
 <ul>
-<li>
-<p><strong>PostgreSQL (Origem e Destino):</strong></p>
-<ul>
-<li><strong>Origem:</strong> Simula o banco de dados transacional de um sistema de produção (OLTP), como um e-commerce. É populado com dados falsos (Faker) para simular um ambiente realista.</li>
-<li><strong>Destino:</strong> Atua como a <strong>Camada de Servir (Serving Layer)</strong>, recebendo os dados já modelados da camada Gold para serem consumidos pelas ferramentas de BI.</li>
-</ul>
-</li>
-<li>
-<p><strong>Apache Airflow:</strong> Atua como o cérebro do pipeline. É o orquestrador responsável por agendar, executar e monitorar as tarefas (DAGs) de forma automática e resiliente, sem depender de agendadores do sistema operacional.</p>
-</li>
-<li>
-<p><strong>MinIO (Data Lake):</strong> Um serviço de object storage de alta performance, compatível com a API do Amazon S3. Ele armazena os dados em todas as camadas da arquitetura medalhão.</p>
-</li>
-<li>
-<p><strong>Apache Spark (PySpark):</strong> O motor de processamento de dados distribuído. É utilizado para executar as transformações (ETL) entre as camadas do Data Lake, desde a limpeza e enriquecimento até a modelagem dimensional.</p>
-</li>
-<li>
-<p><strong>Delta Lake:</strong> Um formato de armazenamento open-source que traz confiabilidade (transações ACID), performance e funcionalidades avançadas de gerenciamento de dados (como <code>merge</code>, <code>time travel</code>, <code>SCD-2</code>) para o Data Lake.</p>
-</li>
-<li>
-<p><strong>Metabase:</strong> Uma ferramenta de Business Intelligence open-source, utilizada para criar os dashboards e visualizações. Ela se conecta ao PostgreSQL de destino para consumir os dados da camada Gold.</p>
-</li>
-</ul>
-<h2 id="jornada-do-dado">Jornada do Dado</h2>
-<ol>
-<li>
-<p><strong>Geração de Massa:</strong> A primeira tarefa do pipeline garante que o banco de dados de origem esteja populado com dados realistas (10 tabelas, 10k+ linhas, 3 anos de histórico), usando a biblioteca Faker.</p>
-</li>
-<li>
-<p><strong>Ingestão para a Landing:</strong> O Airflow orquestra a extração dos dados brutos do PostgreSQL e os salva como arquivos CSV na camada <strong>Landing</strong> do MinIO, particionados por data.</p>
-</li>
-<li>
-<p><strong>Landing → Bronze:</strong> O Spark lê os dados brutos da Landing, adiciona metadados de auditoria e os converte para o formato <strong>Delta Lake</strong> na camada <strong>Bronze</strong>.</p>
-</li>
-<li>
-<p><strong>Bronze → Silver:</strong> O Spark aplica regras de limpeza, tratamento de nulos, padronização e deduplicação, gravando os dados de qualidade na camada <strong>Silver</strong> (Delta Lake).</p>
-</li>
-<li>
-<p><strong>Silver → Gold:</strong> O Spark lê os dados da Silver e constrói o <strong>modelo dimensional (Star Schema)</strong>. As dimensões são carregadas com lógica <strong>SCD Tipo 2</strong>, e a tabela de fatos é carregada de forma <strong>incremental</strong> usando checkpoints. Os dados são salvos na camada <strong>Gold</strong> (Delta Lake).</p>
-</li>
-<li>
-<p><strong>Gold → Camada de Servir:</strong> Os dados modelados da camada Gold são carregados em um banco de dados PostgreSQL de destino, otimizando o acesso para ferramentas de BI.</p>
-</li>
-<li>
-<p><strong>Visualização:</strong> O <strong>Metabase</strong> se conecta ao PostgreSQL de destino para consumir os dados e exibir os KPIs e métricas no dashboard final.</p>
-</li>
+<li><strong>Objetivo:</strong> Ingerir os dados da origem no Data Lake da forma mais bruta e rápida possível, sem aplicar transformações.</li>
+<li><strong>Processo:</strong><ol>
+<li>A tarefa <code>extrair_para_landing</code> no Airflow se conecta ao banco de dados PostgreSQL de origem.</li>
+<li>Utiliza o comando <code>COPY</code> do PostgreSQL para extrair cada tabela para um arquivo <strong>CSV</strong>.</li>
+<li>Os arquivos CSV são gravados no MinIO, particionados por <code>ingestion_date</code>.</li>
 </ol>
+</li>
+<li><strong>Formato:</strong> CSV</li>
+</ul>
+<h2 id="2-camada-bronze-enriched">2. Camada Bronze (Enriched)</h2>
+<ul>
+<li><strong>Objetivo:</strong> Converter os dados brutos para um formato otimizado (Delta Lake) e adicionar metadados de rastreabilidade.</li>
+<li><strong>Processo:</strong><ol>
+<li>O script Spark <code>landing_to_bronze.py</code> é acionado.</li>
+<li>Ele lê os arquivos CSV da camada Landing.</li>
+<li>Adiciona colunas de metadados, como <code>_input_file_name</code> e <code>_loaded_at</code>, para auditoria.</li>
+<li>Salva os dados no formato <strong>Delta Lake</strong>, mantendo o esquema original.</li>
+</ol>
+</li>
+<li><strong>Formato:</strong> Delta Lake</li>
+</ul>
+<h2 id="3-camada-silver-cleaned-conformed">3. Camada Silver (Cleaned &amp; Conformed)</h2>
+<ul>
+<li><strong>Objetivo:</strong> Aplicar regras de negócio, limpeza, normalização e enriquecimento dos dados.</li>
+<li><strong>Processo:</strong><ol>
+<li>O script Spark <code>bronze_to_silver.py</code> é executado.</li>
+<li>Ele lê as tabelas da camada Bronze.</li>
+<li>Aplica as seguintes transformações:<ul>
+<li><strong>Limpeza:</strong> Remove espaços em branco, padroniza strings (ex: <code>UPPERCASE</code>).</li>
+<li><strong>Tratamento de Nulos:</strong> Remove ou preenche valores nulos onde aplicável.</li>
+<li><strong>Deduplicação:</strong> Remove registros duplicados.</li>
+<li><strong>Tipagem de Dados:</strong> Garante que todas as colunas estejam com os tipos corretos (ex: <code>string</code> para <code>timestamp</code>, <code>decimal</code>).</li>
+</ul>
+</li>
+<li>Salva os dados limpos e conformados no formato <strong>Delta Lake</strong>.</li>
+</ol>
+</li>
+<li><strong>Formato:</strong> Delta Lake</li>
+</ul>
+<h2 id="4-camada-gold-curated-modeled">4. Camada Gold (Curated &amp; Modeled)</h2>
+<ul>
+<li><strong>Objetivo:</strong> Criar modelos de dados agregados e otimizados para análise, prontos para serem consumidos por ferramentas de BI.</li>
+<li><strong>Processo:</strong><ol>
+<li>O script Spark <code>silver_to_gold.py</code> é acionado.</li>
+<li>Ele lê as tabelas limpas da camada Silver.</li>
+<li>Constrói um <strong>modelo dimensional</strong> com tabelas de Fato e Dimensão.</li>
+<li><strong>Carga Incremental:</strong><ul>
+<li><strong>Dimensões:</strong> Utiliza a técnica <strong>SCD (Slowly Changing Dimension) Tipo 2</strong> para manter o histórico das alterações. O comando <code>merge</code> do Delta Lake é usado para inserir novos registros e expirar os antigos.</li>
+<li><strong>Fatos:</strong> Utiliza um sistema de <strong>checkpoint</strong> para processar apenas os dados novos desde a última execução, tornando a carga mais eficiente.</li>
+</ul>
+</li>
+<li>Salva as tabelas Fato e Dimensão no formato <strong>Delta Lake</strong>.</li>
+</ol>
+</li>
+<li><strong>Formato:</strong> Delta Lake</li>
+</ul>
 
 
 
