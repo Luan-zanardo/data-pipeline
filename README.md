@@ -41,6 +41,9 @@ origem e destino são configurados por variáveis `SOURCE_DB_*` e `DEST_DB_*`;
 eles não são criados como serviços locais pelo Compose.
 
 ---
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/7f480b24-cf51-488a-9944-4689ce1e78f8" />
+
+---
 
 ## 🧰 Stack e ferramentas
 
