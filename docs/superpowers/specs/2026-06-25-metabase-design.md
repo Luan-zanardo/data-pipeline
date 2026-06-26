@@ -31,8 +31,9 @@ flowchart LR
    externo e conectado como *data source*.
 2. **Data source:** **pré-provisionado** automaticamente via API do Metabase
    (não manual pela UI).
-3. **Dashboard e métricas:** **provisionados automaticamente** via API (cards
-   em SQL nativo + um dashboard que os agrupa).
+3. **Dashboard e métricas:** **provisionados automaticamente** via API — **4
+   KPIs** (cards escalares) + **2 métricas** (gráficos), em SQL nativo, agrupados
+   num dashboard.
 
 ## Onde ficam as credenciais do banco de destino
 
@@ -160,20 +161,56 @@ sucesso.
 
 ## Dashboards e métricas automáticas
 
-São criados **4 cards** (perguntas em SQL nativo) agrupados no dashboard
-**"Pipeline — Vendas"**. SQL conforme o schema real:
+São criados **6 cards** (SQL nativo) agrupados no dashboard
+**"Pipeline — Vendas"**: **4 KPIs** (display `scalar`) + **2 métricas**
+(gráficos). SQL conforme o schema real.
 
-**1. Faturamento por mês** (gráfico de linha)
+### KPIs (display `scalar`)
+
+**KPI 1 — Faturamento total**
 
 ```sql
-SELECT date_trunc('month', f.data_pedido) AS mes,
-       SUM(f.quantidade * f.preco)         AS faturamento
+SELECT SUM(f.quantidade * f.preco) AS faturamento_total
+FROM fato_vendas f;
+```
+
+**KPI 2 — Total de pedidos**
+
+```sql
+SELECT COUNT(DISTINCT f.pedido_id) AS total_pedidos
+FROM fato_vendas f;
+```
+
+**KPI 3 — Ticket médio por pedido**
+
+```sql
+SELECT SUM(f.quantidade * f.preco)
+       / NULLIF(COUNT(DISTINCT f.pedido_id), 0) AS ticket_medio
+FROM fato_vendas f;
+```
+
+**KPI 4 — Itens vendidos**
+
+```sql
+SELECT SUM(f.quantidade) AS itens_vendidos
+FROM fato_vendas f;
+```
+
+### Métricas (gráficos)
+
+**Métrica 1 — Faturamento por mês** (display `line`, usa `dim_data`)
+
+```sql
+SELECT date_trunc('month', d.data) AS mes,
+       SUM(f.quantidade * f.preco)  AS faturamento
 FROM fato_vendas f
+JOIN dim_data d
+  ON d.data = date(f.data_pedido)
 GROUP BY 1
 ORDER BY 1;
 ```
 
-**2. Top 10 produtos por faturamento** (gráfico de barras)
+**Métrica 2 — Top 10 produtos por faturamento** (display `bar`, usa `dim_produto`)
 
 ```sql
 SELECT p.nome                       AS produto,
@@ -186,35 +223,16 @@ ORDER BY 2 DESC
 LIMIT 10;
 ```
 
-**3. Top 10 clientes por faturamento** (gráfico de barras)
-
-```sql
-SELECT c.nome                       AS cliente,
-       SUM(f.quantidade * f.preco)  AS faturamento
-FROM fato_vendas f
-JOIN dim_cliente c
-  ON c.id_cliente = f.usuario_id AND c.is_current = true
-GROUP BY 1
-ORDER BY 2 DESC
-LIMIT 10;
-```
-
-**4. Ticket médio por pedido** (KPI escalar)
-
-```sql
-SELECT AVG(total_pedido) AS ticket_medio
-FROM (
-  SELECT f.pedido_id, SUM(f.quantidade * f.preco) AS total_pedido
-  FROM fato_vendas f
-  GROUP BY f.pedido_id
-) t;
-```
+> `dim_cliente` continua disponível no destino para cards futuros (ex.: top
+> clientes), fora do escopo inicial destes 6.
 
 Cada card é criado via `POST /api/card` com `dataset_query.type = "native"`,
 `dataset_query.database = <id do data source>` e o `display` apropriado
-(`line`, `bar`, `bar`, `scalar`). O dashboard é criado via `POST /api/dashboard`
-e os cards adicionados via `POST /api/dashboard/:id/dashcards` (ou o endpoint
-de dashcards correspondente à versão do Metabase), com posições em grade.
+(`scalar` para os KPIs, `line`/`bar` para as métricas). O dashboard é criado via
+`POST /api/dashboard` e os cards adicionados via
+`POST /api/dashboard/:id/dashcards` (ou o endpoint de dashcards correspondente à
+versão do Metabase), com posições em grade (KPIs numa linha superior, gráficos
+abaixo).
 
 ## Mudanças no `.env.example`
 
@@ -257,8 +275,9 @@ Adicionar ao bloco `volumes:` do compose:
    (exit 0).
 3. `http://localhost:3000` abre **já configurado** com o admin (não pede setup).
 4. Em **Admin → Databases** aparece o data source "Gold (destino)".
-5. O dashboard **"Pipeline — Vendas"** existe com os 4 cards. Com a Gold
-   populada (após `gold_to_postgres.py`), os gráficos exibem dados.
+5. O dashboard **"Pipeline — Vendas"** existe com os 6 cards (4 KPIs + 2
+   gráficos). Com a Gold populada (após `gold_to_postgres.py`), os cards exibem
+   dados.
 6. Re-rodar `docker compose up -d metabase-init` não duplica nada (idempotente).
 
 ## Documentação
@@ -270,7 +289,8 @@ em vez do passo a passo manual atual.
 
 ## Fora de escopo (YAGNI)
 
-- Métricas/gráficos além dos 4 cards iniciais (usuário cria mais na UI).
+- Cards além dos 6 iniciais (usuário cria mais na UI, ex.: top clientes via
+  `dim_cliente`).
 - TLS/HTTPS no Metabase, reverse proxy, ou autenticação externa (SSO).
 - Backup/restore do `metabase-db`.
 - Corrigir a divergência entre `docs/modelo_dimensional.md` e o código (apenas
