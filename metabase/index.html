@@ -899,11 +899,26 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#conectando-ao-banco-de-destino-data-source" class="md-nav__link">
+  <a href="#conexao-e-dashboard-automaticos-metabase-init" class="md-nav__link">
     <span class="md-ellipsis">
-      Conectando ao banco de destino (data source)
+      Conexão e dashboard automáticos (metabase-init)
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Conexão e dashboard automáticos (metabase-init)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reconfigurar-manualmente-se-necessario" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reconfigurar manualmente (se necessário)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -960,7 +975,7 @@ de análise sobre o modelo dimensional.</p>
     E[Gold&lt;br/&gt;Delta Lake] --&gt;|Spark JDBC| F[(Postgres destino)]
     F --&gt;|JDBC| G[Metabase&lt;br/&gt;self-host · :3000]</code></pre>
 <h2 id="componentes-no-docker">Componentes no Docker</h2>
-<p>O <code>docker-compose.yml</code> adiciona dois serviços para a Etapa 6:</p>
+<p>O <code>docker-compose.yml</code> adiciona três serviços para a Etapa 6:</p>
 <ul>
 <li><strong><code>metabase</code></strong> — a aplicação Metabase, exposta em
   <a href="http://localhost:3000">http://localhost:3000</a>.</li>
@@ -968,6 +983,10 @@ de análise sobre o modelo dimensional.</p>
   próprio Metabase (dashboards, perguntas, usuários). Não confundir com o
   banco de <strong>destino</strong> (os dados Gold), que é externo e conectado como
   <em>data source</em>.</li>
+<li><strong><code>metabase-init</code></strong> — um job de execução única que, no primeiro <code>up</code>, cria o
+  usuário admin, conecta o <strong>data source</strong> (Postgres de destino) e monta o
+  <strong>dashboard "Pipeline — Vendas"</strong> (4 KPIs + 2 métricas) via API do Metabase.
+  É idempotente: re-execuções não duplicam nada.</li>
 </ul>
 <p>Os dados do Metabase persistem no volume <code>metabase-db-data</code>.</p>
 <h2 id="subindo-o-metabase">Subindo o Metabase</h2>
@@ -976,8 +995,10 @@ de análise sobre o modelo dimensional.</p>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
 </code></pre></div>
 <p>Aguarde alguns segundos (o healthcheck do Metabase tem <code>start_period</code> de 60s) e
-acesse <a href="http://localhost:3000">http://localhost:3000</a>. No <strong>primeiro acesso</strong>, o Metabase pede a
-criação do usuário administrador.</p>
+acesse <a href="http://localhost:3000">http://localhost:3000</a>. O usuário administrador é criado
+automaticamente pelo <code>metabase-init</code> (ver
+<a href="#conexao-e-dashboard-automaticos-metabase-init">Conexão e dashboard automáticos</a>),
+usando <code>MB_ADMIN_EMAIL</code> / <code>MB_ADMIN_PASSWORD</code> do <code>.env</code>.</p>
 <div class="admonition tip">
 <p class="admonition-title">Pré-requisito: Docker Desktop em execução</p>
 <p>O daemon do Docker precisa estar ativo. No Windows, abra o <strong>Docker
@@ -994,55 +1015,33 @@ compose</code>.</p>
 <p>Os dashboards, perguntas e usuários do Metabase ficam no volume
 <code>metabase-db-data</code>, então sobrevivem a <code>stop</code>/<code>down</code>. Para apagar tudo e
 recomeçar do zero, use <code>docker compose down -v</code> (remove os volumes).</p>
-<h2 id="conectando-ao-banco-de-destino-data-source">Conectando ao banco de destino (data source)</h2>
-<p>Os dados Gold ficam no <strong>Postgres de destino</strong> definido em <code>DEST_DB_*</code> no
-<code>.env</code>. Configure-o como data source na UI do Metabase:</p>
-<ol>
-<li><strong>Configurações → Admin settings → Databases → Add database</strong>.</li>
-<li>Selecione <strong>PostgreSQL</strong> e preencha com os valores de <code>DEST_DB_*</code>:</li>
-</ol>
-<table>
-<thead>
-<tr>
-<th>Campo no Metabase</th>
-<th>Variável do <code>.env</code></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Host</td>
-<td><code>DEST_DB_HOST</code></td>
-</tr>
-<tr>
-<td>Port</td>
-<td><code>DEST_DB_PORT</code></td>
-</tr>
-<tr>
-<td>Database name</td>
-<td><code>DEST_DB_NAME</code></td>
-</tr>
-<tr>
-<td>Username</td>
-<td><code>DEST_DB_USER</code></td>
-</tr>
-<tr>
-<td>Password</td>
-<td><code>DEST_DB_PASSWORD</code></td>
-</tr>
-</tbody>
-</table>
-<ol>
-<li>Em <strong>SSL</strong>, mantenha habilitado (o destino usa <code>DEST_DB_SSLMODE=require</code>).</li>
-<li>Salve. O Metabase fará a sincronização do schema e as tabelas Gold
-   (<code>fato_vendas</code>, <code>dim_cliente</code>, <code>dim_produto</code>, <code>dim_data</code>) ficarão
-   disponíveis para exploração.</li>
-</ol>
+<h2 id="conexao-e-dashboard-automaticos-metabase-init">Conexão e dashboard automáticos (metabase-init)</h2>
+<p>O serviço <code>metabase-init</code> provisiona tudo automaticamente no primeiro <code>up</code>,
+usando as variáveis do <code>.env</code>:</p>
+<ul>
+<li>cria o <strong>usuário admin</strong> (<code>MB_ADMIN_EMAIL</code> / <code>MB_ADMIN_PASSWORD</code>);</li>
+<li>conecta o <strong>data source</strong> "Gold (destino)" com os valores de <code>DEST_DB_*</code>
+  (o <code>ssl</code> é derivado de <code>DEST_DB_SSLMODE</code>);</li>
+<li>cria o dashboard <strong>"Pipeline — Vendas"</strong> com 4 KPIs (faturamento total, total
+  de pedidos, ticket médio, itens vendidos) e 2 métricas (faturamento por mês e
+  top 10 produtos por faturamento).</li>
+</ul>
+<p>Acompanhe o provisionamento com:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>metabase-init
+</code></pre></div>
 <div class="admonition note">
-<p class="admonition-title">Pré-requisito</p>
-<p>O banco de destino precisa estar populado. Rode antes o
-<code>src/spark/gold_to_postgres.py</code> (ver <a href="../gold/">Gold</a>) para virtualizar a
-Gold no Postgres de destino.</p>
+<p class="admonition-title">Pré-requisito de dados</p>
+<p>O destino precisa estar populado para os cards exibirem dados. Rode antes o
+<code>src/spark/gold_to_postgres.py</code> (ver <a href="../gold/">Gold</a>). Os cards são criados
+de qualquer forma; só ficam vazios até a Gold ser virtualizada.</p>
 </div>
+<h3 id="reconfigurar-manualmente-se-necessario">Reconfigurar manualmente (se necessário)</h3>
+<p>Para refazer o provisionamento do zero, derrube os volumes e suba de novo:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>down<span class="w"> </span>-v
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div>
+<p>Ou ajuste o data source / dashboards diretamente pela UI em
+<strong>Admin settings → Databases</strong> e na tela de dashboards.</p>
 <h2 id="montando-os-dashboards">Montando os dashboards</h2>
 <p>Com o data source conectado, construa as análises sobre o esquema estrela:</p>
 <ul>
