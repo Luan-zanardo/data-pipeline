@@ -10,7 +10,10 @@ psycopg2-binary==2.9.9
 # Processamento Spark (Camadas Bronze/Silver)
 pyspark==3.5.0
 delta-spark==3.2.0
-apache-airflow-providers-apache-spark
+# Fixado em 5.0.0: versao testada com Airflow 2.10.5 (constraints oficiais).
+# Sem o pin, o pip resolvia para 6.x (exige airflow>=2.11), forcando upgrade do
+# Airflow para 3.x e estourando a resolucao de dependencias (ResolutionTooDeep).
+apache-airflow-providers-apache-spark==5.0.0
 
 # Escrita no object storage S3-compatible / MinIO (s3fs já puxa o fsspec)
 s3fs==2024.6.1
