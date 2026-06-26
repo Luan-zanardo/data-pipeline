@@ -205,7 +205,7 @@ SELECT date_trunc('month', d.data) AS mes,
        SUM(f.quantidade * f.preco)  AS faturamento
 FROM fato_vendas f
 JOIN dim_data d
-  ON d.data = date(f.data_pedido)
+  ON d.data = f.data_pedido::date
 GROUP BY 1
 ORDER BY 1;
 ```
