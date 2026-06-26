@@ -33,41 +33,45 @@ case "${DEST_DB_SSLMODE:-require}" in
   *)                    DEST_SSL=true  ;;
 esac
 
-# 2. Setup (idempotente) ----------------------------------------------------
-SETUP_TOKEN=$(curl -sf "${MB_URL}/api/session/properties" | jq -r '.["setup-token"] // empty')
+# 2. Setup do admin (idempotente) -------------------------------------------
+# Gateamos pelo flag "has-user-setup" e NAO pela presenca do setup-token: o
+# Metabase mantem o setup-token disponivel em /api/session/properties mesmo
+# depois que o primeiro usuario ja existe. Usar o token como gate fazia o
+# script tentar /api/setup de novo, receber 403 ("a user currently exists"),
+# abortar no set -e e reiniciar em loop infinito.
+#
+# Tambem NAO criamos o data source dentro do /api/setup: se a validacao da
+# conexao falhar (ex.: cold start do pooler), o setup retorna erro mas o
+# usuario ja fica criado, deixando a instancia num estado parcial impossivel
+# de recuperar. O data source e criado separadamente no passo 4, de forma
+# idempotente, o que tambem auto-cura instancias que ja ficaram nesse estado.
+HAS_USER=$(curl -sf "${MB_URL}/api/session/properties" \
+  | jq -r '.["has-user-setup"] // false')
 
-if [ -n "${SETUP_TOKEN}" ]; then
-  log "Instancia nova: executando setup (admin + data source)..."
+if [ "$HAS_USER" != "true" ]; then
+  SETUP_TOKEN=$(curl -sf "${MB_URL}/api/session/properties" | jq -r '.["setup-token"] // empty')
+  if [ -z "$SETUP_TOKEN" ]; then
+    log "ERRO: instancia sem usuario mas sem setup-token; nao da para configurar."
+    exit 1
+  fi
+  log "Instancia nova: criando usuario admin..."
   SETUP_PAYLOAD=$(jq -n \
     --arg token "$SETUP_TOKEN" \
     --arg email "$MB_ADMIN_EMAIL" \
     --arg password "$MB_ADMIN_PASSWORD" \
     --arg site "$SITE_NAME" \
-    --arg dbdisp "$DB_DISPLAY_NAME" \
-    --arg host "$DEST_DB_HOST" \
-    --arg port "$DEST_DB_PORT" \
-    --arg dbname "$DEST_DB_NAME" \
-    --arg user "$DEST_DB_USER" \
-    --arg pass "$DEST_DB_PASSWORD" \
-    --argjson ssl "$DEST_SSL" \
     '{
       token: $token,
       user: {email: $email, password: $password,
              first_name: "Admin", last_name: "Pipeline", site_name: $site},
-      prefs: {site_name: $site, allow_tracking: false},
-      database: {
-        engine: "postgres",
-        name: $dbdisp,
-        details: {host: $host, port: ($port|tonumber), dbname: $dbname,
-                  user: $user, password: $pass, ssl: $ssl}
-      }
+      prefs: {site_name: $site, allow_tracking: false}
     }')
   curl -sf -X POST "${MB_URL}/api/setup" \
     -H "Content-Type: application/json" \
     -d "$SETUP_PAYLOAD" >/dev/null
-  log "Setup concluido."
+  log "Usuario admin criado."
 else
-  log "Instancia ja configurada: pulando setup."
+  log "Instancia ja tem usuario: pulando setup."
 fi
 
 # 3. Login ------------------------------------------------------------------
@@ -84,21 +88,44 @@ if [ -z "$SESSION" ]; then
 fi
 AUTH="X-Metabase-Session: ${SESSION}"
 
-# 4. Descobre o id do data source ------------------------------------------
+# 4. Garante o data source (idempotente) -----------------------------------
 DB_ID=$(curl -sf -H "$AUTH" "${MB_URL}/api/database" \
   | jq -r --arg name "$DB_DISPLAY_NAME" \
       '(.data // .) | map(select(.name == $name)) | .[0].id // empty')
 
 if [ -z "$DB_ID" ]; then
-  log "ERRO: data source '${DB_DISPLAY_NAME}' nao encontrado."
-  exit 1
+  log "Data source '${DB_DISPLAY_NAME}' ausente: criando..."
+  DB_ID=$(curl -sf -X POST "${MB_URL}/api/database" \
+    -H "$AUTH" -H "Content-Type: application/json" \
+    -d "$(jq -n \
+          --arg name "$DB_DISPLAY_NAME" \
+          --arg host "$DEST_DB_HOST" \
+          --arg port "$DEST_DB_PORT" \
+          --arg dbname "$DEST_DB_NAME" \
+          --arg user "$DEST_DB_USER" \
+          --arg pass "$DEST_DB_PASSWORD" \
+          --argjson ssl "$DEST_SSL" \
+          '{
+            name: $name,
+            engine: "postgres",
+            details: {host: $host, port: ($port|tonumber), dbname: $dbname,
+                      user: $user, password: $pass, ssl: $ssl}
+          }')" \
+    | jq -r '.id // empty')
+  if [ -z "$DB_ID" ]; then
+    log "ERRO: falha ao criar o data source '${DB_DISPLAY_NAME}'."
+    exit 1
+  fi
 fi
 log "Data source id = ${DB_ID}."
 
 # 5. Idempotencia: dashboard ja existe? ------------------------------------
+# /api/dashboard devolve um array puro (e nao {data:[...]}). Usamos ".data?"
+# com "?": indexar um array com chave string e erro fatal em jq, e "//" nao
+# captura erro — so captura null/empty. O "?" transforma o erro em empty.
 EXISTING=$(curl -sf -H "$AUTH" "${MB_URL}/api/dashboard" \
   | jq -r --arg name "$DASHBOARD_NAME" \
-      '(.data // .) | map(select(.name == $name)) | .[0].id // empty')
+      '(.data? // .) | map(select(.name == $name)) | .[0].id // empty')
 
 if [ -n "$EXISTING" ]; then
   log "Dashboard '${DASHBOARD_NAME}' ja existe (id ${EXISTING}). Nada a fazer."
