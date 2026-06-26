@@ -668,13 +668,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#modelo-gold-implementado" class="md-nav__link">
+  <a href="#mer-da-origem" class="md-nav__link">
     <span class="md-ellipsis">
-      Modelo Gold implementado
+      MER da origem
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Modelo Gold implementado">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mer-do-destino-modelo-gold" class="md-nav__link">
+    <span class="md-ellipsis">
+      MER do destino (Modelo Gold)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MER do destino (Modelo Gold)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1426,7 +1435,68 @@ cria 10 tabelas e insere 10.000 linhas em cada uma quando a origem está vazia.<
 </tr>
 </tbody>
 </table>
-<h2 id="modelo-gold-implementado">Modelo Gold implementado</h2>
+<h2 id="mer-da-origem">MER da origem</h2>
+<p>O banco de origem representa o domínio transacional do e-commerce. O
+<code>src/setup.py</code> cria as chaves primárias; as relações abaixo são definidas pelas
+colunas de referência usadas na massa gerada. O script não declara constraints
+<code>FOREIGN KEY</code> no PostgreSQL.</p>
+<pre class="mermaid"><code>erDiagram
+    categorias ||--o{ produtos : "categoria_id"
+    usuarios ||--o{ pedidos : "usuario_id"
+    usuarios ||--o{ enderecos : "usuario_id"
+    usuarios ||--o{ avaliacoes : "usuario_id"
+    usuarios ||--o{ carrinho : "usuario_id"
+    pedidos ||--o{ pedido_itens : "pedido_id"
+    pedidos ||--o{ pagamentos : "pedido_id"
+    pedidos ||--o{ envio : "pedido_id"
+    produtos ||--o{ pedido_itens : "produto_id"
+    produtos ||--o{ avaliacoes : "produto_id"
+    produtos ||--o{ carrinho : "produto_id"
+    enderecos ||--o{ envio : "endereco_id"
+
+    categorias {
+        int id PK
+    }
+    usuarios {
+        int id PK
+    }
+    produtos {
+        int id PK
+        int categoria_id
+    }
+    pedidos {
+        int id PK
+        int usuario_id
+    }
+    enderecos {
+        int id PK
+        int usuario_id
+    }
+    pedido_itens {
+        int id PK
+        int pedido_id
+        int produto_id
+    }
+    pagamentos {
+        int id PK
+        int pedido_id
+    }
+    envio {
+        int id PK
+        int pedido_id
+        int endereco_id
+    }
+    avaliacoes {
+        int id PK
+        int usuario_id
+        int produto_id
+    }
+    carrinho {
+        int id PK
+        int usuario_id
+        int produto_id
+    }</code></pre>
+<h2 id="mer-do-destino-modelo-gold">MER do destino (Modelo Gold)</h2>
 <p>O script <code>src/spark/silver_to_gold.py</code> gera três dimensões e uma fato.</p>
 <pre class="mermaid"><code>erDiagram
     dim_cliente ||--o{ fato_vendas : "id_cliente = usuario_id"
