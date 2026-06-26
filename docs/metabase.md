@@ -37,8 +37,10 @@ docker compose up -d
 ```
 
 Aguarde alguns segundos (o healthcheck do Metabase tem `start_period` de 60s) e
-acesse <http://localhost:3000>. No **primeiro acesso**, o Metabase pede a
-criação do usuário administrador.
+acesse <http://localhost:3000>. O usuário administrador é criado
+automaticamente pelo `metabase-init` (ver
+[Conexão e dashboard automáticos](#conexao-e-dashboard-automaticos-metabase-init)),
+usando `MB_ADMIN_EMAIL` / `MB_ADMIN_PASSWORD` do `.env`.
 
 !!! tip "Pré-requisito: Docker Desktop em execução"
     O daemon do Docker precisa estar ativo. No Windows, abra o **Docker
