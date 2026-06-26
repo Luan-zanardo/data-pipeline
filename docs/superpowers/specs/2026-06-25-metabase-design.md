@@ -12,14 +12,15 @@ rodando em Docker junto do restante do stack (MinIO + Airflow).
 
 A documentação (`docs/metabase.md`) e o `.env.example` já descrevem o Metabase,
 mas o `docker-compose.yml` ainda **não** contém os serviços. Este design
-materializa esses serviços e **automatiza** a conexão do data source.
+materializa esses serviços, **automatiza** a conexão do data source e
+**provisiona automaticamente** as perguntas (SQL) e um dashboard inicial.
 
 ```mermaid
 flowchart LR
     E[Gold<br/>Delta Lake] -->|Spark JDBC| F[(Postgres destino<br/>DEST_DB_*)]
     F -->|JDBC| G[Metabase<br/>self-host · :3000]
     H[(metabase-db<br/>Postgres app)] --- G
-    I[metabase-init] -.->|API setup| G
+    I[metabase-init] -.->|API: setup + cards + dashboard| G
 ```
 
 ## Decisões
@@ -30,6 +31,38 @@ flowchart LR
    externo e conectado como *data source*.
 2. **Data source:** **pré-provisionado** automaticamente via API do Metabase
    (não manual pela UI).
+3. **Dashboard e métricas:** **provisionados automaticamente** via API (cards
+   em SQL nativo + um dashboard que os agrupa).
+
+## Onde ficam as credenciais do banco de destino
+
+As credenciais do Postgres de destino (que o Metabase consome) **já existem** no
+`.env` como `DEST_DB_HOST`, `DEST_DB_PORT`, `DEST_DB_NAME`, `DEST_DB_USER`,
+`DEST_DB_PASSWORD` e `DEST_DB_SSLMODE` — as mesmas usadas pelo
+`gold_to_postgres.py`. O serviço `metabase-init` recebe essas variáveis pelo
+`docker-compose.yml` e as usa para registrar o data source. **Não há novo local
+de credenciais**; o usuário preenche o `.env` uma única vez.
+
+## Schema real da Gold (fonte de verdade para o SQL)
+
+> **Atenção:** `docs/modelo_dimensional.md` descreve um modelo idealizado
+> (`sk_venda`, `valor_total`, `forma_pagamento`, etc.) que **não** corresponde
+> ao que `src/spark/silver_to_gold.py` realmente grava. O SQL provisionado
+> abaixo segue o **código real** (fonte de verdade do que existe no Postgres):
+
+| Tabela | Colunas reais (gravadas pelo código) |
+| --- | --- |
+| `fato_vendas` | `id`, `usuario_id`, `data_pedido`, `status`, `pedido_id`, `produto_id`, `quantidade`, `preco` |
+| `dim_cliente` | `id_cliente`, `nome`, `email`, `is_current`, `start_date`, `end_date` |
+| `dim_produto` | `id_produto`, `nome`, `descricao`, `preco`, `is_current`, `start_date`, `end_date` |
+| `dim_data` | `data`, `sk_data` |
+
+Chaves de junção: `fato_vendas.usuario_id = dim_cliente.id_cliente`,
+`fato_vendas.produto_id = dim_produto.id_produto`,
+`date(fato_vendas.data_pedido) = dim_data.data`. Valor da linha =
+`quantidade * preco` (não há `valor_total` materializado). O
+`gold_to_postgres.py` já filtra `is_current = true` ao gravar as dimensões, mas
+o SQL mantém o filtro por robustez.
 
 ## Arquitetura — serviços no `docker-compose.yml`
 
@@ -39,7 +72,7 @@ Três serviços são adicionados:
 | --- | --- | --- |
 | `metabase-db` | `postgres:16` | Postgres dedicado do app Metabase. Volume `metabase-db-data`. Healthcheck `pg_isready`. |
 | `metabase` | `metabase/metabase:latest` | Aplicação em `:3000`. App DB apontado para `metabase-db` via env `MB_DB_*`. Healthcheck em `/api/health` com `start_period: 60s`. |
-| `metabase-init` | `curlimages/curl:latest` | Job de execução única. Espera o `metabase` ficar healthy e provisiona admin + data source via API. `restart: on-failure`. |
+| `metabase-init` | `alpine:3.20` (instala `curl` + `jq` no entrypoint) | Job de execução única. Espera o `metabase` healthy, provisiona admin + data source e cria cards + dashboard via API. `restart: on-failure`. |
 
 ### Variáveis de ambiente do serviço `metabase`
 
@@ -54,6 +87,11 @@ Apontam o app DB para o Postgres dedicado (valores vindos do `.env`):
 | `MB_DB_HOST` | `metabase-db` |
 | `MB_DB_PORT` | `5432` |
 
+### Variáveis de ambiente do serviço `metabase-init`
+
+`MB_ADMIN_EMAIL`, `MB_ADMIN_PASSWORD` e todas as `DEST_DB_*` (repassadas do
+`.env`). Endpoint interno do Metabase: `http://metabase:3000`.
+
 ### Dependências (`depends_on`)
 
 - `metabase` depende de `metabase-db` (`condition: service_healthy`).
@@ -61,22 +99,36 @@ Apontam o app DB para o Postgres dedicado (valores vindos do `.env`):
 
 ## Pré-provisionamento (serviço `metabase-init`)
 
-Abordagem via **setup-token API** do Metabase — oficial e idempotente. O script
-fica embutido no `entrypoint` do serviço, seguindo o mesmo padrão do
-`minio-init` já existente no compose.
+O script de provisionamento fica num **arquivo versionado**
+`scripts/metabase_provision.sh`, montado no container (mais legível e testável
+que um entrypoint inline, dado o tamanho). O entrypoint do serviço instala
+`curl` + `jq` e executa o script.
 
-Fluxo do script:
+Fluxo:
 
-1. Aguarda o `metabase` responder em `/api/health` (laço `until` com `sleep`,
+1. Aguarda o `metabase` responder em `/api/health` (laço `until` + `sleep`,
    além do `depends_on: service_healthy`).
-2. `GET /api/session/properties` → extrai o campo `setup-token`.
-3. **Se o token existir** (instância nova / não configurada):
-   `POST /api/setup` numa única chamada, criando:
-   - o usuário **admin** (`MB_ADMIN_EMAIL`, `MB_ADMIN_PASSWORD`, nome do site);
-   - o **database de destino** (PostgreSQL) com os valores de `DEST_DB_*`
-     (host, port, dbname, user, password, ssl conforme `DEST_DB_SSLMODE`).
-4. **Se o token for `null`** (instância já configurada): não faz nada e sai com
-   sucesso → **idempotente** em re-execuções (`docker compose up` repetido).
+2. **Setup (idempotente):** `GET /api/session/properties` → extrai `setup-token`.
+   - **Token presente** (instância nova): `POST /api/setup` numa única chamada,
+     criando o **admin** (`MB_ADMIN_EMAIL`/`MB_ADMIN_PASSWORD`) **e** o
+     **database de destino** (PostgreSQL, valores `DEST_DB_*`, `ssl` derivado de
+     `DEST_DB_SSLMODE`).
+   - **Token `null`** (já configurado): pula o setup.
+3. **Login:** `POST /api/session` com as credenciais de admin → obtém o
+   `X-Metabase-Session` para as chamadas seguintes.
+4. **Descobre o database id** do data source via `GET /api/database` (casa pelo
+   `name` "Gold (destino)").
+5. **Cria os cards e o dashboard (idempotente):** antes de criar, consulta
+   `GET /api/dashboard` por nome; se o dashboard "Pipeline — Vendas" já existir,
+   pula a criação. Caso contrário, cria os cards (perguntas SQL) e o dashboard,
+   e adiciona os cards ao dashboard.
+
+### Idempotência
+
+O setup é gated pelo `setup-token` (null em re-runs). A criação de
+cards/dashboard é gated pela existência do dashboard por nome. Assim,
+`docker compose up -d metabase-init` repetido não duplica nada e sai com
+sucesso.
 
 ### Payload do `POST /api/setup` (forma)
 
@@ -106,7 +158,63 @@ Fluxo do script:
 }
 ```
 
-O valor de `ssl` deriva de `DEST_DB_SSLMODE` (`require` → `true`).
+## Dashboards e métricas automáticas
+
+São criados **4 cards** (perguntas em SQL nativo) agrupados no dashboard
+**"Pipeline — Vendas"**. SQL conforme o schema real:
+
+**1. Faturamento por mês** (gráfico de linha)
+
+```sql
+SELECT date_trunc('month', f.data_pedido) AS mes,
+       SUM(f.quantidade * f.preco)         AS faturamento
+FROM fato_vendas f
+GROUP BY 1
+ORDER BY 1;
+```
+
+**2. Top 10 produtos por faturamento** (gráfico de barras)
+
+```sql
+SELECT p.nome                       AS produto,
+       SUM(f.quantidade * f.preco)  AS faturamento
+FROM fato_vendas f
+JOIN dim_produto p
+  ON p.id_produto = f.produto_id AND p.is_current = true
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 10;
+```
+
+**3. Top 10 clientes por faturamento** (gráfico de barras)
+
+```sql
+SELECT c.nome                       AS cliente,
+       SUM(f.quantidade * f.preco)  AS faturamento
+FROM fato_vendas f
+JOIN dim_cliente c
+  ON c.id_cliente = f.usuario_id AND c.is_current = true
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 10;
+```
+
+**4. Ticket médio por pedido** (KPI escalar)
+
+```sql
+SELECT AVG(total_pedido) AS ticket_medio
+FROM (
+  SELECT f.pedido_id, SUM(f.quantidade * f.preco) AS total_pedido
+  FROM fato_vendas f
+  GROUP BY f.pedido_id
+) t;
+```
+
+Cada card é criado via `POST /api/card` com `dataset_query.type = "native"`,
+`dataset_query.database = <id do data source>` e o `display` apropriado
+(`line`, `bar`, `bar`, `scalar`). O dashboard é criado via `POST /api/dashboard`
+e os cards adicionados via `POST /api/dashboard/:id/dashcards` (ou o endpoint
+de dashcards correspondente à versão do Metabase), com posições em grade.
 
 ## Mudanças no `.env.example`
 
@@ -118,8 +226,8 @@ MB_ADMIN_EMAIL=admin@example.com
 MB_ADMIN_PASSWORD=metabaseadmin1
 ```
 
-> Nota: o Metabase exige senha de admin com mínimo de complexidade
-> (comprimento e não-trivial). O default acima atende ao requisito.
+> Nota: o Metabase exige senha de admin com mínimo de complexidade. O default
+> acima atende ao requisito.
 
 ## Volumes
 
@@ -133,31 +241,37 @@ Adicionar ao bloco `volumes:` do compose:
 
 - **Metabase não sobe a tempo:** `metabase-init` aguarda via `until` +
   `depends_on: service_healthy`; com `restart: on-failure` re-tenta.
-- **Re-execução (já configurado):** `setup-token` vem `null` → script sai 0 sem
-  reconfigurar (idempotente).
-- **Destino indisponível no setup:** o `POST /api/setup` ainda cria admin + a
-  entrada do database; a sincronização do schema ocorre quando o destino estiver
-  acessível. O destino estar populado (rodar `gold_to_postgres.py` antes) é
-  pré-requisito para ver dados, não para subir o serviço.
+- **Re-execução (já configurado):** `setup-token` `null` → pula setup;
+  dashboard existente → pula cards/dashboard (idempotente).
+- **Destino indisponível / Gold ainda não populada:** setup e criação de cards
+  funcionam mesmo assim (são metadados no app DB). Os gráficos só mostram dados
+  depois de rodar `gold_to_postgres.py`. O destino populado é pré-requisito para
+  **ver dados**, não para subir os serviços.
+- **Falha numa chamada de API:** o script usa `set -e` e falha o container
+  (`restart: on-failure` re-tenta); erros são logados em `docker compose logs`.
 
 ## Verificação
 
-1. `docker compose up -d metabase metabase-db metabase-init` sobe sem erro.
-2. `docker compose ps` mostra `metabase` healthy.
-3. `http://localhost:3000` abre **já logado/configurável** com o admin criado
-   (não pede setup inicial).
+1. `docker compose up -d metabase-db metabase metabase-init` sobe sem erro.
+2. `docker compose ps` mostra `metabase` healthy e `metabase-init` concluído
+   (exit 0).
+3. `http://localhost:3000` abre **já configurado** com o admin (não pede setup).
 4. Em **Admin → Databases** aparece o data source "Gold (destino)".
-5. Re-rodar `docker compose up -d metabase-init` não quebra (idempotente).
+5. O dashboard **"Pipeline — Vendas"** existe com os 4 cards. Com a Gold
+   populada (após `gold_to_postgres.py`), os gráficos exibem dados.
+6. Re-rodar `docker compose up -d metabase-init` não duplica nada (idempotente).
 
 ## Documentação
 
 Atualizar `docs/metabase.md`: a seção "Conectando ao banco de destino" passa a
-descrever que o data source é **provisionado automaticamente** pelo
-`metabase-init` (e como reconfigurar manualmente, se necessário), em vez do
-passo a passo manual atual.
+descrever o provisionamento **automático** (data source + dashboard) pelo
+`metabase-init`, com instruções de como reconfigurar manualmente se necessário,
+em vez do passo a passo manual atual.
 
 ## Fora de escopo (YAGNI)
 
-- Criação automática de dashboards/perguntas (feito na UI pelo usuário).
+- Métricas/gráficos além dos 4 cards iniciais (usuário cria mais na UI).
 - TLS/HTTPS no Metabase, reverse proxy, ou autenticação externa (SSO).
 - Backup/restore do `metabase-db`.
+- Corrigir a divergência entre `docs/modelo_dimensional.md` e o código (apenas
+  registrada aqui; o SQL segue o código real).
