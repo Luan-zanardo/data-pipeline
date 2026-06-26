@@ -189,6 +189,8 @@ mkdocs gh-deploy    # publica no GitHub Pages
 
 **Visualização e documentação**
 
+Equipe: Gabriel Minatto, Gabriel Pagnan, Pedro Afonso, Luan, William, Lorenzo, Anderson
+
 - [Metabase — Documentação](https://www.metabase.com/docs/latest/)
 - [MkDocs — Documentação](https://www.mkdocs.org/)
 - [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/)
