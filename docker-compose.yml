@@ -137,6 +137,14 @@ services:
           --password "${AIRFLOW_ADMIN_PASSWORD:-admin}" \
           --firstname Admin --lastname Pipeline \
           --role Admin --email admin@example.com || true
+        # Provisiona a conexao usada pelo SparkSubmitOperator (conn_id "spark_default").
+        # Master local[*]: o Spark roda in-process via pyspark, sem cluster YARN/standalone,
+        # entao o default "yarn" do provider nao se aplica aqui.
+        # Idempotente: se a conexao ja existir, o "add" retorna erro e o "|| true" ignora,
+        # preservando qualquer conexao configurada manualmente.
+        airflow connections add spark_default \
+          --conn-type spark \
+          --conn-host 'local[*]' || true
     restart: on-failure
 
   airflow-webserver:
