@@ -107,14 +107,6 @@ cria 10 tabelas e insere 10.000 linhas em cada uma quando a origem está vazia.
 | produto_id | inteiro | Referência ao produto |
 | quantidade | inteiro | Quantidade no carrinho |
 
-<<<<<<< Updated upstream
-## Modelo Gold implementado
-
-O script `src/spark/silver_to_gold.py` gera três dimensões e uma fato.
-
-```mermaid
-erDiagram
-=======
 ## MER da origem
 
 O banco de origem representa o domínio transacional do e-commerce. O
@@ -187,7 +179,6 @@ O script `src/spark/silver_to_gold.py` gera três dimensões e uma fato.
 
 ```mermaid
 erDiagram
->>>>>>> Stashed changes
     dim_cliente ||--o{ fato_vendas : "id_cliente = usuario_id"
     dim_produto ||--o{ fato_vendas : "id_produto = produto_id"
     dim_data    ||--o{ fato_vendas : "data = data_pedido"
