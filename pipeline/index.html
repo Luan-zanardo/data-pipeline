@@ -558,9 +558,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-camada-silver-cleaned-conformed" class="md-nav__link">
+  <a href="#3-camada-silver" class="md-nav__link">
     <span class="md-ellipsis">
-      3. Camada Silver (Cleaned &amp; Conformed)
+      3. Camada Silver
     </span>
   </a>
   
@@ -969,20 +969,20 @@
 </li>
 <li><strong>Formato:</strong> Delta Lake</li>
 </ul>
-<h2 id="3-camada-silver-cleaned-conformed">3. Camada Silver (Cleaned &amp; Conformed)</h2>
+<h2 id="3-camada-silver">3. Camada Silver</h2>
 <ul>
-<li><strong>Objetivo:</strong> Aplicar regras de negócio, limpeza, normalização e enriquecimento dos dados.</li>
+<li><strong>Objetivo:</strong> Deduplicar registros por <code>id</code> e aplicar as padronizações/casts implementados no script.</li>
 <li><strong>Processo:</strong><ol>
 <li>O script Spark <code>bronze_to_silver.py</code> é executado.</li>
 <li>Ele lê as tabelas da camada Bronze.</li>
 <li>Aplica as seguintes transformações:<ul>
-<li><strong>Limpeza:</strong> Remove espaços em branco, padroniza strings (ex: <code>UPPERCASE</code>).</li>
-<li><strong>Tratamento de Nulos:</strong> Remove ou preenche valores nulos onde aplicável.</li>
-<li><strong>Deduplicação:</strong> Remove registros duplicados.</li>
-<li><strong>Tipagem de Dados:</strong> Garante que todas as colunas estejam com os tipos corretos (ex: <code>string</code> para <code>timestamp</code>, <code>decimal</code>).</li>
+<li><strong>Deduplicação:</strong> mantém o registro mais recente por <code>id</code>.</li>
+<li><strong>Usuários:</strong> aplica <code>trim</code> e <code>lower</code> em <code>email</code>.</li>
+<li><strong>Produtos:</strong> converte <code>preco</code> para <code>decimal(10,2)</code>.</li>
+<li><strong>Pedidos:</strong> converte <code>data_pedido</code> para timestamp.</li>
 </ul>
 </li>
-<li>Salva os dados limpos e conformados no formato <strong>Delta Lake</strong>.</li>
+<li>Salva ou atualiza as tabelas Silver em <strong>Delta Lake</strong> usando <code>MERGE</code> por <code>id</code>.</li>
 </ol>
 </li>
 <li><strong>Formato:</strong> Delta Lake</li>
@@ -993,10 +993,10 @@
 <li><strong>Processo:</strong><ol>
 <li>O script Spark <code>silver_to_gold.py</code> é acionado.</li>
 <li>Ele lê as tabelas limpas da camada Silver.</li>
-<li>Constrói um <strong>modelo dimensional</strong> com tabelas de Fato e Dimensão.</li>
+<li>Constrói as tabelas <code>dim_data</code>, <code>dim_cliente</code>, <code>dim_produto</code> e <code>fato_vendas</code>.</li>
 <li><strong>Carga Incremental:</strong><ul>
-<li><strong>Dimensões:</strong> Utiliza a técnica <strong>SCD (Slowly Changing Dimension) Tipo 2</strong> para manter o histórico das alterações. O comando <code>merge</code> do Delta Lake é usado para inserir novos registros e expirar os antigos.</li>
-<li><strong>Fatos:</strong> Utiliza um sistema de <strong>checkpoint</strong> para processar apenas os dados novos desde a última execução, tornando a carga mais eficiente.</li>
+<li><strong>Dimensões:</strong> <code>dim_cliente</code> e <code>dim_produto</code> usam colunas <code>is_current</code>, <code>start_date</code> e <code>end_date</code>.</li>
+<li><strong>Fatos:</strong> <code>fato_vendas</code> usa checkpoint por <code>data_pedido</code>.</li>
 </ul>
 </li>
 <li>Salva as tabelas Fato e Dimensão no formato <strong>Delta Lake</strong>.</li>

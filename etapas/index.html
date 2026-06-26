@@ -494,63 +494,63 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#etapa-1-data-lake-base-4" class="md-nav__link">
+  <a href="#etapa-1-data-lake-base" class="md-nav__link">
     <span class="md-ellipsis">
-      Etapa 1 — Data Lake Base (#4)
+      Etapa 1 — Data Lake Base
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#etapa-2-origem-dos-dados-e-geracao-de-massa-2" class="md-nav__link">
+  <a href="#etapa-2-origem-dos-dados-e-geracao-de-massa" class="md-nav__link">
     <span class="md-ellipsis">
-      Etapa 2 — Origem dos Dados e Geração de Massa (#2)
+      Etapa 2 — Origem dos Dados e Geração de Massa
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#etapa-3-orquestracao-e-camada-landing-5" class="md-nav__link">
+  <a href="#etapa-3-orquestracao-e-camada-landing" class="md-nav__link">
     <span class="md-ellipsis">
-      Etapa 3 — Orquestração e Camada Landing (#5)
+      Etapa 3 — Orquestração e Camada Landing
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#etapa-4-transformacao-spark-bronze-e-silver-6" class="md-nav__link">
+  <a href="#etapa-4-transformacao-spark-bronze-e-silver" class="md-nav__link">
     <span class="md-ellipsis">
-      Etapa 4 — Transformação Spark: Bronze e Silver (#6)
+      Etapa 4 — Transformação Spark: Bronze e Silver
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#etapa-5-modelagem-carga-incremental-e-virtualizacao-gold-9" class="md-nav__link">
+  <a href="#etapa-5-modelagem-carga-incremental-e-serving-gold" class="md-nav__link">
     <span class="md-ellipsis">
-      Etapa 5 — Modelagem, Carga Incremental e Virtualização — Gold (#9)
+      Etapa 5 — Modelagem, Carga Incremental e Serving — Gold
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#etapa-6-dataviz-com-metabase-10" class="md-nav__link">
+  <a href="#etapa-6-dataviz-com-metabase" class="md-nav__link">
     <span class="md-ellipsis">
-      Etapa 6 — Dataviz com Metabase (#10)
+      Etapa 6 — Dataviz com Metabase
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#etapa-7-documentacao-apresentacao-e-entrega-11" class="md-nav__link">
+  <a href="#documentacao" class="md-nav__link">
     <span class="md-ellipsis">
-      Etapa 7 — Documentação, Apresentação e Entrega (#11)
+      Documentação
     </span>
   </a>
   
@@ -972,21 +972,21 @@
 
 
 <h1 id="etapas-do-projeto">Etapas do Projeto</h1>
-<p>O trabalho foi dividido em issues no GitHub, uma por responsável. Cada etapa
-tem uma página detalhada nesta documentação.</p>
-<h2 id="etapa-1-data-lake-base-4">Etapa 1 — Data Lake Base (#4)</h2>
+<p>Esta página resume as partes implementadas no repositório e aponta para as
+páginas detalhadas da documentação.</p>
+<h2 id="etapa-1-data-lake-base">Etapa 1 — Data Lake Base</h2>
 <ul>
 <li>Criar o Data Lake em object storage (<strong>MinIO</strong>) com a arquitetura medalhão.</li>
 <li>Criar o banco relacional online (PostgreSQL) para os dados finais.</li>
 </ul>
-<h2 id="etapa-2-origem-dos-dados-e-geracao-de-massa-2">Etapa 2 — Origem dos Dados e Geração de Massa (#2)</h2>
+<h2 id="etapa-2-origem-dos-dados-e-geracao-de-massa">Etapa 2 — Origem dos Dados e Geração de Massa</h2>
 <ul>
 <li>Criar no mínimo 10 tabelas.</li>
 <li>Gerar 10.000 linhas por tabela com Python (<strong>Faker</strong>).</li>
 <li>Distribuir as datas dos registros nos últimos 3 anos.</li>
 <li>📄 <a href="../geracao-massa/">Geração de Massa</a></li>
 </ul>
-<h2 id="etapa-3-orquestracao-e-camada-landing-5">Etapa 3 — Orquestração e Camada Landing (#5)</h2>
+<h2 id="etapa-3-orquestracao-e-camada-landing">Etapa 3 — Orquestração e Camada Landing</h2>
 <ul>
 <li>Subir ferramenta de orquestração (<strong>Apache Airflow</strong> em Docker), sem usar
   cron/Agendador do SO.</li>
@@ -994,31 +994,30 @@ tem uma página detalhada nesta documentação.</p>
 <li>Gravar os dados na Landing no formato bruto original (CSV).</li>
 <li>📄 <a href="../orquestracao/">Orquestração e Landing</a></li>
 </ul>
-<h2 id="etapa-4-transformacao-spark-bronze-e-silver-6">Etapa 4 — Transformação Spark: Bronze e Silver (#6)</h2>
+<h2 id="etapa-4-transformacao-spark-bronze-e-silver">Etapa 4 — Transformação Spark: Bronze e Silver</h2>
 <ul>
 <li>Desenvolver os scripts obrigatoriamente com <strong>Apache Spark (PySpark)</strong>.</li>
 <li>Ler da Landing e gravar na Bronze em <strong>Delta Lake</strong>.</li>
 <li>Limpar e tratar, gravando na Silver em Delta Lake.</li>
 <li>📄 <a href="../bronze-silver/">Bronze e Silver</a></li>
 </ul>
-<h2 id="etapa-5-modelagem-carga-incremental-e-virtualizacao-gold-9">Etapa 5 — Modelagem, Carga Incremental e Virtualização — Gold (#9)</h2>
+<h2 id="etapa-5-modelagem-carga-incremental-e-serving-gold">Etapa 5 — Modelagem, Carga Incremental e Serving — Gold</h2>
 <ul>
 <li>Modelar a camada Gold (esquema estrela) e implementar <strong>carga incremental</strong>.</li>
 <li>Manter histórico nas dimensões (<strong>SCD Tipo 2</strong>).</li>
 <li>Virtualizar/carregar para o banco relacional via JDBC.</li>
 <li>📄 <a href="../gold/">Gold</a></li>
 </ul>
-<h2 id="etapa-6-dataviz-com-metabase-10">Etapa 6 — Dataviz com Metabase (#10)</h2>
+<h2 id="etapa-6-dataviz-com-metabase">Etapa 6 — Dataviz com Metabase</h2>
 <ul>
 <li>Subir o <strong>Metabase self-host</strong> (Docker) e conectá-lo ao Postgres de destino.</li>
 <li>Construir os dashboards de análise sobre os dados Gold.</li>
 <li>📄 <a href="../metabase/">Dataviz (Metabase)</a></li>
 </ul>
-<h2 id="etapa-7-documentacao-apresentacao-e-entrega-11">Etapa 7 — Documentação, Apresentação e Entrega (#11)</h2>
+<h2 id="documentacao">Documentação</h2>
 <ul>
-<li>Documentação completa no MkDocs e README caprichado.</li>
-<li>Resumo em PowerPoint (20 min) e demonstração prática.</li>
-<li>Entrega no Portal AVA com URLs do GitHub e do MkDocs.</li>
+<li>Documentação publicada com MkDocs.</li>
+<li>README com visão geral e execução do projeto.</li>
 </ul>
 
 

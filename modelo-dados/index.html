@@ -662,43 +662,25 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#dados-sujos-propositais" class="md-nav__link">
-    <span class="md-ellipsis">
-      Dados sujos propositais
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#modelo-dimensional-gold" class="md-nav__link">
+  <a href="#modelo-gold-implementado" class="md-nav__link">
     <span class="md-ellipsis">
-      Modelo dimensional (Gold)
+      Modelo Gold implementado
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Modelo dimensional (Gold)">
+    <nav class="md-nav" aria-label="Modelo Gold implementado">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fato_vendas" class="md-nav__link">
+  <a href="#dim_cliente-e-dim_produto" class="md-nav__link">
     <span class="md-ellipsis">
-      fato_vendas
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dim_cliente-e-dim_produto-scd-tipo-2" class="md-nav__link">
-    <span class="md-ellipsis">
-      dim_cliente e dim_produto (SCD Tipo 2)
+      dim_cliente e dim_produto
     </span>
   </a>
   
@@ -708,6 +690,15 @@
   <a href="#dim_data" class="md-nav__link">
     <span class="md-ellipsis">
       dim_data
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fato_vendas" class="md-nav__link">
+    <span class="md-ellipsis">
+      fato_vendas
     </span>
   </a>
   
@@ -1065,13 +1056,11 @@
 
 
 <h1 id="modelo-de-dados">Modelo de Dados</h1>
-<p>Esta página documenta os dados que percorrem o pipeline: as <strong>10 tabelas de
-origem</strong> (que aterrissam na Landing e seguem até a Silver) e o <strong>modelo
-dimensional</strong> (esquema estrela) construído na camada Gold.</p>
+<p>Esta página descreve as tabelas que o projeto cria e processa no estado atual
+do repositório.</p>
 <h2 id="tabelas-de-origem">Tabelas de origem</h2>
-<p>O domínio simulado é um <strong>e-commerce</strong>. São 10 tabelas relacionais, cada uma
-com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
-(Etapa 2). Os identificadores (<code>id</code>) são as chaves primárias.</p>
+<p>O domínio simulado é um e-commerce. A massa é criada por <code>src/setup.py</code>, que
+cria 10 tabelas e insere 10.000 linhas em cada uma quando a origem está vazia.</p>
 <h3 id="usuarios"><code>usuarios</code></h3>
 <table>
 <thead>
@@ -1085,7 +1074,7 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador do usuário (PK)</td>
+<td>Identificador do usuário</td>
 </tr>
 <tr>
 <td>nome</td>
@@ -1095,7 +1084,7 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>email</td>
 <td>texto</td>
-<td>E-mail de contato</td>
+<td>E-mail</td>
 </tr>
 </tbody>
 </table>
@@ -1112,7 +1101,7 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador da categoria (PK)</td>
+<td>Identificador da categoria</td>
 </tr>
 <tr>
 <td>nome</td>
@@ -1139,7 +1128,7 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador do produto (PK)</td>
+<td>Identificador do produto</td>
 </tr>
 <tr>
 <td>nome</td>
@@ -1154,17 +1143,17 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>preco</td>
 <td>decimal(10,2)</td>
-<td>Preço unitário</td>
+<td>Preço</td>
 </tr>
 <tr>
 <td>estoque</td>
 <td>inteiro</td>
-<td>Quantidade em estoque</td>
+<td>Estoque</td>
 </tr>
 <tr>
 <td>categoria_id</td>
 <td>inteiro</td>
-<td>FK → <code>categorias.id</code></td>
+<td>Referência à categoria</td>
 </tr>
 </tbody>
 </table>
@@ -1181,12 +1170,12 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador do pedido (PK)</td>
+<td>Identificador do pedido</td>
 </tr>
 <tr>
 <td>usuario_id</td>
 <td>inteiro</td>
-<td>FK → <code>usuarios.id</code></td>
+<td>Referência ao usuário</td>
 </tr>
 <tr>
 <td>data_pedido</td>
@@ -1196,7 +1185,7 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>status</td>
 <td>texto</td>
-<td>Situação (pendente, aprovado, enviado, entregue, cancelado)</td>
+<td>Status do pedido</td>
 </tr>
 </tbody>
 </table>
@@ -1213,17 +1202,17 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador do item (PK)</td>
+<td>Identificador do item</td>
 </tr>
 <tr>
 <td>pedido_id</td>
 <td>inteiro</td>
-<td>FK → <code>pedidos.id</code></td>
+<td>Referência ao pedido</td>
 </tr>
 <tr>
 <td>produto_id</td>
 <td>inteiro</td>
-<td>FK → <code>produtos.id</code></td>
+<td>Referência ao produto</td>
 </tr>
 <tr>
 <td>quantidade</td>
@@ -1233,7 +1222,7 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>preco</td>
 <td>decimal(10,2)</td>
-<td>Preço unitário no momento da compra</td>
+<td>Preço do item</td>
 </tr>
 </tbody>
 </table>
@@ -1250,17 +1239,17 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador do pagamento (PK)</td>
+<td>Identificador do pagamento</td>
 </tr>
 <tr>
 <td>pedido_id</td>
 <td>inteiro</td>
-<td>FK → <code>pedidos.id</code></td>
+<td>Referência ao pedido</td>
 </tr>
 <tr>
 <td>forma_pagamento</td>
 <td>texto</td>
-<td>cartao_credito, boleto, pix</td>
+<td><code>cartao_credito</code>, <code>boleto</code> ou <code>pix</code></td>
 </tr>
 <tr>
 <td>quantia</td>
@@ -1287,17 +1276,17 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador do envio (PK)</td>
+<td>Identificador do envio</td>
 </tr>
 <tr>
 <td>pedido_id</td>
 <td>inteiro</td>
-<td>FK → <code>pedidos.id</code></td>
+<td>Referência ao pedido</td>
 </tr>
 <tr>
 <td>endereco_id</td>
 <td>inteiro</td>
-<td>FK → <code>enderecos.id</code></td>
+<td>Referência ao endereço</td>
 </tr>
 <tr>
 <td>data_envio</td>
@@ -1307,12 +1296,12 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>data_entrega</td>
 <td>timestamp</td>
-<td>Data/hora da entrega (pode ser nulo)</td>
+<td>Data/hora da entrega, quando houver</td>
 </tr>
 <tr>
 <td>status</td>
 <td>texto</td>
-<td>preparando, em_transito, entregue, cancelado</td>
+<td>Status do envio</td>
 </tr>
 </tbody>
 </table>
@@ -1329,12 +1318,12 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador do endereço (PK)</td>
+<td>Identificador do endereço</td>
 </tr>
 <tr>
 <td>usuario_id</td>
 <td>inteiro</td>
-<td>FK → <code>usuarios.id</code></td>
+<td>Referência ao usuário</td>
 </tr>
 <tr>
 <td>rua</td>
@@ -1376,27 +1365,27 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador da avaliação (PK)</td>
+<td>Identificador da avaliação</td>
 </tr>
 <tr>
 <td>usuario_id</td>
 <td>inteiro</td>
-<td>FK → <code>usuarios.id</code></td>
+<td>Referência ao usuário</td>
 </tr>
 <tr>
 <td>produto_id</td>
 <td>inteiro</td>
-<td>FK → <code>produtos.id</code></td>
+<td>Referência ao produto</td>
 </tr>
 <tr>
 <td>avaliacao</td>
 <td>inteiro</td>
-<td>Nota de 1 a 5</td>
+<td>Nota</td>
 </tr>
 <tr>
 <td>comentario</td>
 <td>texto</td>
-<td>Texto livre</td>
+<td>Comentário</td>
 </tr>
 <tr>
 <td>data_avaliacao</td>
@@ -1418,17 +1407,17 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 <tr>
 <td>id</td>
 <td>inteiro</td>
-<td>Identificador do item no carrinho (PK)</td>
+<td>Identificador do item no carrinho</td>
 </tr>
 <tr>
 <td>usuario_id</td>
 <td>inteiro</td>
-<td>FK → <code>usuarios.id</code></td>
+<td>Referência ao usuário</td>
 </tr>
 <tr>
 <td>produto_id</td>
 <td>inteiro</td>
-<td>FK → <code>produtos.id</code></td>
+<td>Referência ao produto</td>
 </tr>
 <tr>
 <td>quantidade</td>
@@ -1437,152 +1426,57 @@ com no mínimo 10.000 linhas e datas distribuídas pelos últimos 3 anos
 </tr>
 </tbody>
 </table>
-<h3 id="dados-sujos-propositais">Dados sujos propositais</h3>
-<p>O gerador de massa (<code>generate_mock_landing.py</code>) injeta de propósito alguns
-registros problemáticos nas últimas linhas de cada tabela — IDs duplicados,
-nomes vazios, e-mails com espaços/maiúsculas, preços e quantidades negativas,
-notas fora do intervalo 1–5, UFs minúsculas. Eles existem para <strong>exercitar as
-regras de limpeza e deduplicação da camada Silver</strong> e comprovar que o
-tratamento funciona.</p>
-<h2 id="modelo-dimensional-gold">Modelo dimensional (Gold)</h2>
-<p>A camada Gold materializa um <strong>esquema estrela</strong> com uma tabela fato e três
-dimensões.</p>
+<h2 id="modelo-gold-implementado">Modelo Gold implementado</h2>
+<p>O script <code>src/spark/silver_to_gold.py</code> gera três dimensões e uma fato.</p>
 <pre class="mermaid"><code>erDiagram
-    dim_cliente ||--o{ fato_vendas : "sk_cliente"
-    dim_produto ||--o{ fato_vendas : "sk_produto"
-    dim_data    ||--o{ fato_vendas : "sk_data"
+    dim_cliente ||--o{ fato_vendas : "id_cliente = usuario_id"
+    dim_produto ||--o{ fato_vendas : "id_produto = produto_id"
+    dim_data    ||--o{ fato_vendas : "data = data_pedido"
 
     fato_vendas {
-        long sk_venda PK
-        int  id_pedido_item
-        long sk_cliente FK
-        long sk_produto FK
-        int  sk_data FK
-        int  quantidade
-        decimal preco_unitario
-        decimal valor_total
-        string status_pedido
-        string forma_pagamento
+        int id
+        int usuario_id
+        timestamp data_pedido
+        string status
+        int pedido_id
+        int produto_id
+        int quantidade
+        decimal preco
     }
     dim_cliente {
-        long sk_cliente PK
-        int  id_cliente
+        int id_cliente
         string nome
         string email
-        timestamp valido_de
-        timestamp valido_ate
         boolean is_current
+        timestamp start_date
+        timestamp end_date
     }
     dim_produto {
-        long sk_produto PK
-        int  id_produto
+        int id_produto
         string nome
+        string descricao
         decimal preco
         int estoque
         int categoria_id
-        string categoria_nome
-        timestamp valido_de
-        timestamp valido_ate
         boolean is_current
+        timestamp start_date
+        timestamp end_date
     }
     dim_data {
-        int sk_data PK
         date data
-        int ano
-        int trimestre
-        int mes
-        string nome_mes
-        int dia
-        int dia_semana
+        int sk_data
     }</code></pre>
-<h3 id="fato_vendas"><code>fato_vendas</code></h3>
-<p>Grão: <strong>um item de pedido</strong>. Origem: <code>pedido_itens</code> × <code>pedidos</code>, enriquecido
-com a forma de pagamento. Carregada de forma <strong>incremental</strong> por checkpoint
-sobre <code>data_pedido</code> (ver <a href="../gold/">Camada Gold</a>).</p>
-<table>
-<thead>
-<tr>
-<th>Coluna</th>
-<th>Descrição</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>sk_venda</td>
-<td>Chave substituta (surrogate key) da fato</td>
-</tr>
-<tr>
-<td>id_pedido_item</td>
-<td>Chave natural do item (<code>pedido_itens.id</code>)</td>
-</tr>
-<tr>
-<td>sk_cliente</td>
-<td>FK → <code>dim_cliente</code> (registro vigente no carregamento)</td>
-</tr>
-<tr>
-<td>sk_produto</td>
-<td>FK → <code>dim_produto</code> (registro vigente no carregamento)</td>
-</tr>
-<tr>
-<td>sk_data</td>
-<td>FK → <code>dim_data</code> (formato <code>yyyyMMdd</code>)</td>
-</tr>
-<tr>
-<td>quantidade</td>
-<td>Quantidade do item</td>
-</tr>
-<tr>
-<td>preco_unitario</td>
-<td>Preço unitário</td>
-</tr>
-<tr>
-<td>valor_total</td>
-<td><code>quantidade × preco_unitario</code></td>
-</tr>
-<tr>
-<td>status_pedido</td>
-<td>Status do pedido</td>
-</tr>
-<tr>
-<td>forma_pagamento</td>
-<td>Forma de pagamento associada ao pedido</td>
-</tr>
-</tbody>
-</table>
-<h3 id="dim_cliente-e-dim_produto-scd-tipo-2"><code>dim_cliente</code> e <code>dim_produto</code> (SCD Tipo 2)</h3>
-<p>Dimensões com <strong>histórico</strong> (Slowly Changing Dimension tipo 2). Cada mudança
-de atributo fecha a versão anterior (<code>valido_ate</code>, <code>is_current = false</code>) e abre
-uma nova. A detecção de mudança usa um <code>hash_scd</code> (SHA-256) dos atributos
-versionados.</p>
-<table>
-<thead>
-<tr>
-<th>Coluna</th>
-<th>Descrição</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>sk_*</td>
-<td>Chave substituta</td>
-</tr>
-<tr>
-<td>id_*</td>
-<td>Chave natural (do registro de origem)</td>
-</tr>
-<tr>
-<td>valido_de / valido_ate</td>
-<td>Janela de vigência da versão</td>
-</tr>
-<tr>
-<td>is_current</td>
-<td><code>true</code> para a versão vigente</td>
-</tr>
-</tbody>
-</table>
+<h3 id="dim_cliente-e-dim_produto"><code>dim_cliente</code> e <code>dim_produto</code></h3>
+<p>As dimensões mantêm histórico com SCD Tipo 2 usando <code>is_current</code>, <code>start_date</code>
+e <code>end_date</code>. O código compara atributos selecionados e cria nova versão quando
+há mudança.</p>
 <h3 id="dim_data"><code>dim_data</code></h3>
-<p>Dimensão de calendário gerada entre a menor e a maior <code>data_pedido</code> da Silver.
-A chave <code>sk_data</code> é a data no formato <code>yyyyMMdd</code> (ex.: <code>20260623</code>).</p>
+<p>Contém as datas distintas de <code>pedidos.data_pedido</code> e a chave <code>sk_data</code> no
+formato <code>yyyyMMdd</code>.</p>
+<h3 id="fato_vendas"><code>fato_vendas</code></h3>
+<p>A fato é resultado do join entre <code>pedidos</code> e <code>pedido_itens</code>. Ela é carregada de
+forma incremental a partir do checkpoint <code>gold/_checkpoints/fato_vendas</code>.</p>
+<p>As consultas do Metabase calculam faturamento como <code>quantidade * preco</code>.</p>
 
 
 

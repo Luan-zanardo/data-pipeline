@@ -934,7 +934,7 @@
 </ul>
 </li>
 <li>
-<p><strong>Apache Airflow:</strong> Atua como o cérebro do pipeline. É o orquestrador responsável por agendar, executar e monitorar as tarefas (DAGs) de forma automática e resiliente, sem depender de agendadores do sistema operacional.</p>
+<p><strong>Apache Airflow:</strong> Atua como o orquestrador responsável por executar e monitorar a DAG do pipeline, sem depender de agendadores do sistema operacional.</p>
 </li>
 <li>
 <p><strong>MinIO (Data Lake):</strong> Um serviço de object storage de alta performance, compatível com a API do Amazon S3. Ele armazena os dados em todas as camadas da arquitetura medalhão.</p>
@@ -961,16 +961,16 @@
 <p><strong>Landing → Bronze:</strong> O Spark lê os dados brutos da Landing, adiciona metadados de auditoria e os converte para o formato <strong>Delta Lake</strong> na camada <strong>Bronze</strong>.</p>
 </li>
 <li>
-<p><strong>Bronze → Silver:</strong> O Spark aplica regras de limpeza, tratamento de nulos, padronização e deduplicação, gravando os dados de qualidade na camada <strong>Silver</strong> (Delta Lake).</p>
+<p><strong>Bronze → Silver:</strong> O Spark deduplica por <code>id</code>, aplica padronizações/casts pontuais e grava a camada <strong>Silver</strong> (Delta Lake).</p>
 </li>
 <li>
-<p><strong>Silver → Gold:</strong> O Spark lê os dados da Silver e constrói o <strong>modelo dimensional (Star Schema)</strong>. As dimensões são carregadas com lógica <strong>SCD Tipo 2</strong>, e a tabela de fatos é carregada de forma <strong>incremental</strong> usando checkpoints. Os dados são salvos na camada <strong>Gold</strong> (Delta Lake).</p>
+<p><strong>Silver → Gold:</strong> O Spark lê os dados da Silver e cria <code>dim_data</code>, <code>dim_cliente</code>, <code>dim_produto</code> e <code>fato_vendas</code>. As dimensões de cliente/produto usam lógica <strong>SCD Tipo 2</strong>, e a fato é carregada de forma incremental usando checkpoint.</p>
 </li>
 <li>
 <p><strong>Gold → Camada de Servir:</strong> Os dados modelados da camada Gold são carregados em um banco de dados PostgreSQL de destino, otimizando o acesso para ferramentas de BI.</p>
 </li>
 <li>
-<p><strong>Visualização:</strong> O <strong>Metabase</strong> se conecta ao PostgreSQL de destino para consumir os dados e exibir os KPIs e métricas no dashboard final.</p>
+<p><strong>Visualização:</strong> O <strong>Metabase</strong> se conecta ao PostgreSQL de destino e recebe um dashboard inicial provisionado por <code>metabase-init</code>.</p>
 </li>
 </ol>
 

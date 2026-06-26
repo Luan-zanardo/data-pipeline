@@ -969,8 +969,7 @@
 <h1 id="dataviz-com-metabase-etapa-6">Dataviz com Metabase (Etapa 6)</h1>
 <p>A camada de visualização do projeto usa o <strong>Metabase self-host</strong>, rodando em
 Docker junto do restante do stack. O Metabase consome o <strong>Postgres de destino</strong>
-(Gold virtualizada, produzida pelo <code>gold_to_postgres.py</code>) e exibe os dashboards
-de análise sobre o modelo dimensional.</p>
+carregado por <code>src/serving/gold_to_postgres.py</code>.</p>
 <pre class="mermaid"><code>flowchart LR
     E[Gold&lt;br/&gt;Delta Lake] --&gt;|Spark JDBC| F[(Postgres destino)]
     F --&gt;|JDBC| G[Metabase&lt;br/&gt;self-host · :3000]</code></pre>
@@ -990,9 +989,7 @@ de análise sobre o modelo dimensional.</p>
 </ul>
 <p>Os dados do Metabase persistem no volume <code>metabase-db-data</code>.</p>
 <h2 id="subindo-o-metabase">Subindo o Metabase</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>metabase
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># ou suba o stack inteiro:</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
 </code></pre></div>
 <p>Aguarde alguns segundos (o healthcheck do Metabase tem <code>start_period</code> de 60s) e
 acesse <a href="http://localhost:3000">http://localhost:3000</a>. O usuário administrador é criado
@@ -1032,7 +1029,7 @@ usando as variáveis do <code>.env</code>:</p>
 <div class="admonition note">
 <p class="admonition-title">Pré-requisito de dados</p>
 <p>O destino precisa estar populado para os cards exibirem dados. Rode antes o
-<code>src/spark/gold_to_postgres.py</code> (ver <a href="../gold/">Gold</a>). Os cards são criados
+fluxo da DAG até <code>gold_to_serving_layer</code> (ver <a href="../gold/">Gold</a>). Os cards são criados
 de qualquer forma; só ficam vazios até a Gold ser virtualizada.</p>
 </div>
 <h3 id="reconfigurar-manualmente-se-necessario">Reconfigurar manualmente (se necessário)</h3>
@@ -1043,7 +1040,7 @@ de qualquer forma; só ficam vazios até a Gold ser virtualizada.</p>
 <p>Ou ajuste o data source / dashboards diretamente pela UI em
 <strong>Admin settings → Databases</strong> e na tela de dashboards.</p>
 <h2 id="montando-os-dashboards">Montando os dashboards</h2>
-<p>Com o data source conectado, construa as análises sobre o esquema estrela:</p>
+<p>Com o data source conectado, é possível construir análises sobre as tabelas Gold:</p>
 <ul>
 <li><strong>Vendas por período</strong> — <code>fato_vendas</code> agregada por <code>dim_data</code>.</li>
 <li><strong>Top clientes / produtos</strong> — <code>fato_vendas</code> cruzada com <code>dim_cliente</code> e

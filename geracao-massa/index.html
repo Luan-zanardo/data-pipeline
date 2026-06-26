@@ -732,18 +732,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#o-que-ele-gera" class="md-nav__link">
+  <a href="#o-que-o-script-faz" class="md-nav__link">
     <span class="md-ellipsis">
-      O que ele gera
+      O que o script faz
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#como-executar" class="md-nav__link">
+  <a href="#tabelas-criadas" class="md-nav__link">
     <span class="md-ellipsis">
-      Como executar
+      Tabelas criadas
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observacao-sobre-qualidade-dos-dados" class="md-nav__link">
+    <span class="md-ellipsis">
+      Observação sobre qualidade dos dados
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#execucao" class="md-nav__link">
+    <span class="md-ellipsis">
+      Execução
     </span>
   </a>
   
@@ -927,37 +945,42 @@
 
 
 <h1 id="geracao-de-massa-etapa-2">Geração de Massa (Etapa 2)</h1>
-<p>A origem dos dados é simulada com <strong>Python + Faker</strong>. O script
-<a href="https://github.com/Luan-zanardo/data-pipeline/blob/main/generate_mock_landing.py"><code>generate_mock_landing.py</code></a>
-gera as 10 tabelas do e-commerce com <strong>10.000 linhas cada</strong> e datas
-distribuídas pelos <strong>últimos 3 anos</strong>, gravando os CSVs diretamente na camada
-Landing local.</p>
-<blockquote>
-<p>Este script é o atalho para rodar o pipeline <strong>offline</strong>, sem depender do
-banco de origem nem do Airflow. Em produção, a ingestão da Landing vem do
-Postgres de origem via Airflow (ver <a href="../orquestracao/">Orquestração e Landing</a>).</p>
-</blockquote>
-<h2 id="o-que-ele-gera">O que ele gera</h2>
+<p>A massa de dados é criada por <code>src/setup.py</code>. Esse script é chamado pela tarefa
+<code>setup_ambiente_origem</code> da DAG <code>pipeline_completo</code>.</p>
+<h2 id="o-que-o-script-faz">O que o script faz</h2>
 <ul>
-<li><strong>10 tabelas</strong>: <code>categorias</code>, <code>usuarios</code>, <code>produtos</code>, <code>pedidos</code>,
-  <code>enderecos</code>, <code>pedido_itens</code>, <code>pagamentos</code>, <code>envio</code>, <code>avaliacoes</code>, <code>carrinho</code>.</li>
-<li><strong>10.000 linhas por tabela</strong>, com <code>Faker('pt_BR')</code> (nomes, e-mails, endereços
-  brasileiros).</li>
-<li><strong>Histórico de 3 anos</strong>: as colunas de data são sorteadas no intervalo
-  <code>[hoje − 3 anos, hoje]</code>.</li>
-<li><strong>Dados sujos propositais</strong> nas últimas linhas de cada tabela (IDs
-  duplicados, nulos, strings mal formatadas, valores negativos), para validar
-  a limpeza na Silver — ver <a href="../modelo-dados/#dados-sujos-propositais">Modelo de Dados</a>.</li>
+<li>Conecta no PostgreSQL de origem usando <code>SOURCE_DB_*</code>.</li>
+<li>Verifica se a tabela <code>pedidos</code> existe e já possui registros.</li>
+<li>Se a origem já estiver populada, não altera os dados.</li>
+<li>Se estiver vazia, cria 10 tabelas de e-commerce e insere 10.000 linhas em
+  cada uma.</li>
+<li>Usa <code>Faker('pt_BR')</code> para nomes, e-mails, endereços e textos.</li>
+<li>Distribui datas aleatórias nos últimos 3 anos.</li>
 </ul>
-<h2 id="como-executar">Como executar</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>faker<span class="w">          </span><span class="c1"># ou: pip install -r requirements.txt</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>generate_mock_landing.py
+<h2 id="tabelas-criadas">Tabelas criadas</h2>
+<ul>
+<li><code>categorias</code></li>
+<li><code>usuarios</code></li>
+<li><code>produtos</code></li>
+<li><code>pedidos</code></li>
+<li><code>enderecos</code></li>
+<li><code>pedido_itens</code></li>
+<li><code>pagamentos</code></li>
+<li><code>envio</code></li>
+<li><code>avaliacoes</code></li>
+<li><code>carrinho</code></li>
+</ul>
+<h2 id="observacao-sobre-qualidade-dos-dados">Observação sobre qualidade dos dados</h2>
+<p>O script atual não injeta dados sujos de propósito. A etapa Silver ainda faz
+deduplicação por <code>id</code> e algumas padronizações/casts, mas a documentação não deve
+assumir a existência de registros inválidos artificiais.</p>
+<h2 id="execucao">Execução</h2>
+<p>No fluxo normal, não é necessário chamar esse arquivo manualmente: a DAG executa
+o setup antes da ingestão.</p>
+<p>Para rodar fora do Airflow, o ambiente precisa ter as dependências Python e as
+variáveis <code>SOURCE_DB_*</code> configuradas:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>src/setup.py
 </code></pre></div>
-<p>A saída segue o mesmo layout particionado da Landing oficial:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>datalake/landing/&lt;tabela&gt;/ingestion_date=&lt;YYYY-MM-DD&gt;/&lt;tabela&gt;.csv
-</code></pre></div>
-<p>Com os CSVs no lugar, siga direto para a transformação Spark em
-<a href="../bronze-silver/">Bronze e Silver</a>.</p>
 
 
 

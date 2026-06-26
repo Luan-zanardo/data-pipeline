@@ -764,9 +764,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dag-ingestao_landing" class="md-nav__link">
+  <a href="#dag-pipeline_completo" class="md-nav__link">
     <span class="md-ellipsis">
-      DAG ingestao_landing
+      DAG pipeline_completo
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#servicos-relacionados-no-docker-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      Serviços relacionados no Docker Compose
     </span>
   </a>
   
@@ -779,81 +788,12 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Como executar">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-pre-requisitos" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Pré-requisitos
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-configurar-variaveis" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Configurar variáveis
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-subir-o-airflow-minio" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Subir o Airflow + MinIO
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-acessar-a-ui-e-rodar" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. Acessar a UI e rodar
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-conferir-o-resultado-no-minio" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. Conferir o resultado no MinIO
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#parar" class="md-nav__link">
-    <span class="md-ellipsis">
-      Parar
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
-  <a href="#servicos-do-docker-composeyml" class="md-nav__link">
+  <a href="#resultado-esperado-na-landing" class="md-nav__link">
     <span class="md-ellipsis">
-      Serviços do docker-compose.yml
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validacao" class="md-nav__link">
-    <span class="md-ellipsis">
-      Validação
+      Resultado esperado na Landing
     </span>
   </a>
   
@@ -1014,76 +954,36 @@
 
 
 <h1 id="orquestracao-e-camada-landing-etapa-3">Orquestração e Camada Landing (Etapa 3)</h1>
-<p>Esta etapa sobe um orquestrador (<strong>Apache Airflow</strong> em Docker) que <strong>agenda</strong> a
-ingestão das tabelas do banco de origem e grava os dados na camada <strong>Landing</strong>
-no <strong>formato bruto original (CSV)</strong>.</p>
-<blockquote>
-<p>✅ O agendamento é feito pelo <strong>scheduler do Airflow</strong> — conforme exigido pela
-Etapa 3, <strong>não</strong> usamos <code>cron</code> do Linux nem o Agendador de Tarefas do Windows.</p>
-</blockquote>
+<p>A orquestração é feita pelo Apache Airflow em Docker. A DAG implementada no
+repositório é <code>pipeline_completo</code>, definida em <code>dags/pipeline_completo.py</code>.</p>
+<p>O agendamento externo por <code>cron</code> ou Agendador de Tarefas não é usado.</p>
 <h2 id="arquitetura-desta-etapa">Arquitetura desta etapa</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Postgres (origem) ──ingestão──▶ Landing (CSV bruto, MinIO) ──manifesto──▶ Bronze (Etapa 4)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>PostgreSQL origem → Airflow/Python COPY CSV → Landing no MinIO → manifesto JSON → Bronze
 </code></pre></div>
 <ul>
-<li><strong>Orquestrador:</strong> Apache Airflow <code>2.10.5</code> (LocalExecutor) — definido no
-  <code>docker-compose.yml</code>.</li>
-<li><strong>Fonte:</strong> Postgres do projeto (Supabase). A connection string fica no <code>.env</code>.</li>
-<li><strong>Destino (Landing):</strong> object storage <strong>MinIO</strong> (S3-compatible), no bucket
-  <code>datalake</code>, prefixo <code>landing/</code>, particionado por data de ingestão. O destino é
-  controlado pela variável <code>LANDING_PATH</code> (<code>s3://datalake/landing</code>); apontá-la
-  para um caminho local faz a ingestão gravar em disco, <strong>sem mudar o código</strong>.</li>
-<li><strong>Extração:</strong> <code>COPY ... TO STDOUT WITH CSV</code> nativo do Postgres → fidelidade
-  total ao dado bruto (sem transformação). A escrita usa <code>fsspec</code>/<code>s3fs</code>.</li>
+<li><strong>Orquestrador:</strong> Apache Airflow <code>2.10.5</code> com <code>LocalExecutor</code>.</li>
+<li><strong>Fonte:</strong> PostgreSQL de origem configurado por <code>SOURCE_DB_*</code>.</li>
+<li><strong>Destino:</strong> MinIO, bucket <code>datalake</code>, prefixo <code>landing/</code>.</li>
+<li><strong>Extração:</strong> <code>COPY ... TO STDOUT WITH CSV HEADER</code>, implementado em
+  <code>src/ingestion/landing.py</code>.</li>
+<li><strong>Manifesto:</strong> JSON em <code>landing/_manifests/ingestion_&lt;data&gt;.json</code>, usado pela
+  etapa Bronze.</li>
 </ul>
-<h2 id="dag-ingestao_landing">DAG <code>ingestao_landing</code></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>descobrir_tabelas → extrair_para_landing (1 task por tabela, em paralelo) → gerar_manifesto
+<h2 id="dag-pipeline_completo">DAG <code>pipeline_completo</code></h2>
+<p>A DAG não possui agendamento automático (<code>schedule=None</code>). Ela é disparada
+manualmente pela UI do Airflow.</p>
+<p>Fluxo principal:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>setup_ambiente_origem
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  → descobrir_tabelas
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  → extrair_para_landing (dynamic task mapping, uma task por tabela)
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  → gerar_manifesto
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  → landing_to_bronze
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  → bronze_to_silver
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  → silver_to_gold
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  → validar_gold
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  → gold_to_serving_layer
 </code></pre></div>
-<ul>
-<li><strong>descobrir_tabelas</strong> — lista dinamicamente as tabelas do schema <code>public</code>
-  (sem hardcode; adapta-se ao que a Etapa 2 criar).</li>
-<li><strong>extrair_para_landing</strong> — para cada tabela, grava o CSV bruto na Landing
-  (dynamic task mapping: uma task por tabela).</li>
-<li><strong>gerar_manifesto</strong> — registra um manifesto JSON da execução (tabelas, linhas,
-  caminhos) que serve de handoff para a camada Bronze.</li>
-<li><strong>Agendamento:</strong> <code>schedule="0 6 * * *"</code> (diário às 06:00, <code>America/Sao_Paulo</code>),
-  <code>catchup=False</code>, <code>retries=2</code>.</li>
-</ul>
-<p>O código está em
-<a href="https://github.com/Luan-zanardo/data-pipeline/blob/main/dags/ingestao_landing.py"><code>dags/ingestao_landing.py</code></a>
-e a lógica reutilizável (pura, sem Airflow) em
-<a href="https://github.com/Luan-zanardo/data-pipeline/blob/main/src/ingestion/landing.py"><code>src/ingestion/landing.py</code></a>.</p>
-<h2 id="como-executar">Como executar</h2>
-<h3 id="1-pre-requisitos">1. Pré-requisitos</h3>
-<ul>
-<li>Docker + Docker Compose.</li>
-</ul>
-<h3 id="2-configurar-variaveis">2. Configurar variáveis</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># edite o .env e preencha SOURCE_DB_PASSWORD com a senha do banco de origem</span>
-</code></pre></div>
-<h3 id="3-subir-o-airflow-minio">3. Subir o Airflow + MinIO</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
-</code></pre></div>
-<p>A primeira subida baixa as imagens e instala as dependências; aguarde o
-<code>airflow-webserver</code> ficar <em>healthy</em>.</p>
-<h3 id="4-acessar-a-ui-e-rodar">4. Acessar a UI e rodar</h3>
-<ul>
-<li>Abra <a href="http://localhost:8080">http://localhost:8080</a> (login: <code>admin</code>/<code>admin</code>, ou o que estiver no <code>.env</code>).</li>
-<li>Ative (toggle) a DAG <strong><code>ingestao_landing</code></strong>.</li>
-<li>Dispare manualmente em <strong>Trigger DAG</strong> para ver a ingestão rodar na hora, ou
-  aguarde o agendamento diário.</li>
-</ul>
-<h3 id="5-conferir-o-resultado-no-minio">5. Conferir o resultado no MinIO</h3>
-<p>Console do MinIO em <a href="http://localhost:9001">http://localhost:9001</a> (login: <code>minioadmin</code>/<code>minioadmin</code>,
-ou o do <code>.env</code>). Navegue no bucket <code>datalake</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>s3://datalake/landing/&lt;tabela&gt;/ingestion_date=&lt;YYYY-MM-DD&gt;/&lt;tabela&gt;.csv
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>s3://datalake/landing/_manifests/ingestion_&lt;YYYY-MM-DD&gt;.json
-</code></pre></div>
-<h3 id="parar">Parar</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>down<span class="w">       </span><span class="c1"># mantém os dados aterrissados</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>down<span class="w"> </span>-v<span class="w">    </span><span class="c1"># remove também os metadados do Airflow e o volume MinIO</span>
-</code></pre></div>
-<h2 id="servicos-do-docker-composeyml">Serviços do <code>docker-compose.yml</code></h2>
+<h2 id="servicos-relacionados-no-docker-compose">Serviços relacionados no Docker Compose</h2>
 <table>
 <thead>
 <tr>
@@ -1094,36 +994,50 @@ ou o do <code>.env</code>). Navegue no bucket <code>datalake</code>:</p>
 <tbody>
 <tr>
 <td><code>minio</code></td>
-<td>Object storage S3-compatible (API 9000, console 9001) que hospeda o Data Lake</td>
+<td>Object storage S3-compatible (API 9000, console 9001)</td>
 </tr>
 <tr>
 <td><code>minio-init</code></td>
-<td>Cria o bucket <code>datalake</code> e encerra (idempotente)</td>
+<td>Cria o bucket <code>datalake</code></td>
 </tr>
 <tr>
 <td><code>airflow-metadata</code></td>
-<td>Postgres de metadados <strong>do próprio Airflow</strong> (não é a fonte dos dados)</td>
+<td>Postgres interno de metadados do Airflow</td>
+</tr>
+<tr>
+<td><code>airflow-logs-init</code></td>
+<td>Ajusta permissões do volume de logs</td>
 </tr>
 <tr>
 <td><code>airflow-init</code></td>
-<td>Migra o banco de metadados e cria o usuário admin da UI</td>
+<td>Migra o banco de metadados e cria o usuário admin</td>
 </tr>
 <tr>
 <td><code>airflow-webserver</code></td>
-<td>UI do Airflow (porta 8080)</td>
+<td>UI do Airflow na porta 8080</td>
 </tr>
 <tr>
 <td><code>airflow-scheduler</code></td>
-<td>Scheduler que dispara a DAG no horário agendado</td>
+<td>Scheduler do Airflow</td>
 </tr>
 </tbody>
 </table>
-<p>Os dados aterrissados ficam no volume Docker <code>minio-data</code>, <strong>não</strong> no
-repositório.</p>
-<h2 id="validacao">Validação</h2>
-<p>A conexão com o banco de origem e a leitura das 10 tabelas foram validadas com
-sucesso (<code>usuarios</code>, <code>produtos</code>, <code>pedidos</code>, <code>pedido_itens</code>, <code>pagamentos</code>,
-<code>envio</code>, <code>enderecos</code>, <code>categorias</code>, <code>avaliacoes</code>, <code>carrinho</code>).</p>
+<p>O Compose não cria um PostgreSQL de origem. A origem vem das variáveis
+<code>SOURCE_DB_*</code>.</p>
+<h2 id="como-executar">Como executar</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--build
+</code></pre></div>
+<p>Depois:</p>
+<ol>
+<li>Abra <a href="http://localhost:8080">http://localhost:8080</a>.</li>
+<li>Faça login com <code>AIRFLOW_ADMIN_USER</code> / <code>AIRFLOW_ADMIN_PASSWORD</code>.</li>
+<li>Ative e dispare a DAG <code>pipeline_completo</code>.</li>
+</ol>
+<h2 id="resultado-esperado-na-landing">Resultado esperado na Landing</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>s3://datalake/landing/&lt;tabela&gt;/ingestion_date=&lt;YYYY-MM-DD&gt;/&lt;tabela&gt;.csv
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>s3://datalake/landing/_manifests/ingestion_&lt;YYYY-MM-DD&gt;.json
+</code></pre></div>
 
 
 

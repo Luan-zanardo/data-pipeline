@@ -677,36 +677,36 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#caminho-a-execucao-local" class="md-nav__link">
+  <a href="#subir-o-ambiente" class="md-nav__link">
     <span class="md-ellipsis">
-      Caminho A — Execução local
+      Subir o ambiente
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#caminho-b-orquestrado-airflow-minio" class="md-nav__link">
+  <a href="#rodar-o-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
-      Caminho B — Orquestrado (Airflow + MinIO)
+      Rodar o pipeline
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#ordem-das-etapas" class="md-nav__link">
+  <a href="#o-que-cada-etapa-executa" class="md-nav__link">
     <span class="md-ellipsis">
-      Ordem das etapas
+      O que cada etapa executa
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#visualizacao-da-documentacao" class="md-nav__link">
+  <a href="#parar-o-ambiente" class="md-nav__link">
     <span class="md-ellipsis">
-      Visualização da documentação
+      Parar o ambiente
     </span>
   </a>
   
@@ -963,114 +963,85 @@
 
 
 <h1 id="como-executar">Como Executar</h1>
-<p>Há dois caminhos para rodar o pipeline:</p>
-<ul>
-<li><strong>Caminho A — Local (rápido, para validar a transformação).</strong> Gera a massa com
-  Faker direto na Landing local e roda os scripts Spark na sua máquina.</li>
-<li><strong>Caminho B — Orquestrado (completo).</strong> Sobe Airflow + MinIO no Docker e
-  ingere os dados do Postgres de origem.</li>
-</ul>
+<p>O caminho suportado pelo projeto é o fluxo orquestrado pelo Docker Compose e
+pela DAG <code>pipeline_completo</code> do Airflow.</p>
 <h2 id="pre-requisitos">Pré-requisitos</h2>
 <ul>
-<li>Python 3.10+</li>
-<li>Java 8/11 (necessário para o Apache Spark)</li>
-<li>Docker + Docker Compose (apenas para o Caminho B)</li>
+<li>Git</li>
+<li>Docker + Docker Compose</li>
+<li>Acesso ao PostgreSQL de origem (<code>SOURCE_DB_*</code>)</li>
+<li>Acesso ao PostgreSQL de destino (<code>DEST_DB_*</code>)</li>
 </ul>
 <h2 id="instalacao">Instalação</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Luan-zanardo/data-pipeline.git
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>data-pipeline
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env
 </code></pre></div>
-<p>Copie e preencha as variáveis de ambiente:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>cp<span class="w"> </span>.env.example<span class="w"> </span>.env
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># preencha SOURCE_DB_PASSWORD (origem) e, para a Gold, as variáveis DEST_DB_*</span>
+<p>Edite o <code>.env</code> e preencha as credenciais dos bancos de origem e destino. O
+Compose cria os containers de Airflow, MinIO e Metabase, mas não cria os bancos
+PostgreSQL de origem/destino.</p>
+<h2 id="subir-o-ambiente">Subir o ambiente</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--build
 </code></pre></div>
-<hr />
-<h2 id="caminho-a-execucao-local">Caminho A — Execução local</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># 1. Geração de massa na Landing (Etapa 2)</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>python<span class="w"> </span>generate_mock_landing.py
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># 2. Landing -&gt; Bronze (Etapa 4)</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>python<span class="w"> </span>src/spark/landing_to_bronze.py
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># 3. Bronze -&gt; Silver (Etapa 4)</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>python<span class="w"> </span>src/spark/bronze_to_silver.py
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># 4. Silver -&gt; Gold: modelo dimensional + carga incremental (Etapa 5)</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>python<span class="w"> </span>src/spark/silver_to_gold.py
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># 5. Validação da Gold (counts, SCD2, checkpoint)</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>python<span class="w"> </span>src/spark/validar_gold.py
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1"># 6. (Opcional) Gold -&gt; Postgres de destino para o Metabase (Etapa 5)</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>python<span class="w"> </span>src/spark/gold_to_postgres.py
-</code></pre></div>
-<p>Os scripts Spark aceitam <code>--date YYYY-MM-DD</code> para processar uma data específica
-e leem a raiz do Data Lake de <code>DATALAKE_PATH</code> (padrão: <code>datalake</code>).</p>
-<hr />
-<h2 id="caminho-b-orquestrado-airflow-minio">Caminho B — Orquestrado (Airflow + MinIO)</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
-</code></pre></div>
+<p>Interfaces:</p>
 <ul>
-<li>UI do Airflow: <a href="http://localhost:8080">http://localhost:8080</a> (login no <code>.env</code>, padrão <code>admin</code>/<code>admin</code>).</li>
-<li>Console do MinIO: <a href="http://localhost:9001">http://localhost:9001</a> (padrão <code>minioadmin</code>/<code>minioadmin</code>).</li>
-<li>Metabase: <a href="http://localhost:3000">http://localhost:3000</a> (cria o usuário admin no primeiro acesso).</li>
+<li>Airflow: <a href="http://localhost:8080">http://localhost:8080</a></li>
+<li>MinIO Console: <a href="http://localhost:9001">http://localhost:9001</a></li>
+<li>Metabase: <a href="http://localhost:3000">http://localhost:3000</a></li>
 </ul>
-<p>Ative e dispare a DAG <strong><code>ingestao_landing</code></strong> para ingerir o Postgres de origem
-na Landing. Depois siga do passo 2 do Caminho A para transformar as camadas.</p>
-<p>O passo a passo detalhado está em <a href="../orquestracao/">Orquestração e Landing</a>.
-Para montar os dashboards, veja <a href="../metabase/">Dataviz (Metabase)</a>.</p>
-<hr />
-<h2 id="ordem-das-etapas">Ordem das etapas</h2>
+<h2 id="rodar-o-pipeline">Rodar o pipeline</h2>
+<ol>
+<li>Acesse o Airflow com o usuário/senha do <code>.env</code> (padrão <code>admin</code>/<code>admin</code>).</li>
+<li>Ative e dispare manualmente a DAG <code>pipeline_completo</code>.</li>
+<li>Acompanhe as tarefas nesta ordem:
+   <code>setup_ambiente_origem</code> → <code>descobrir_tabelas</code> → <code>extrair_para_landing</code>
+   → <code>gerar_manifesto</code> → <code>landing_to_bronze</code> → <code>bronze_to_silver</code>
+   → <code>silver_to_gold</code> → <code>validar_gold</code> → <code>gold_to_serving_layer</code>.</li>
+</ol>
+<h2 id="o-que-cada-etapa-executa">O que cada etapa executa</h2>
 <table>
 <thead>
 <tr>
-<th>Passo</th>
-<th>Script / Ação</th>
-<th>Página</th>
+<th>Etapa</th>
+<th>Implementação</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Massa</td>
-<td><code>generate_mock_landing.py</code></td>
-<td><a href="../geracao-massa/">Geração de Massa</a></td>
+<td>Massa de dados</td>
+<td><code>src/setup.py</code>, chamado pela tarefa <code>setup_ambiente_origem</code></td>
 </tr>
 <tr>
 <td>Landing</td>
-<td>DAG <code>ingestao_landing</code> (Airflow)</td>
-<td><a href="../orquestracao/">Orquestração</a></td>
+<td><code>src/ingestion/landing.py</code>, chamado pelas tasks Python da DAG</td>
 </tr>
 <tr>
 <td>Bronze</td>
-<td><code>src/spark/landing_to_bronze.py</code></td>
-<td><a href="../bronze-silver/">Bronze e Silver</a></td>
+<td><code>src/spark/landing_to_bronze.py --date {{ ds }}</code></td>
 </tr>
 <tr>
 <td>Silver</td>
-<td><code>src/spark/bronze_to_silver.py</code></td>
-<td><a href="../bronze-silver/">Bronze e Silver</a></td>
+<td><code>src/spark/bronze_to_silver.py --date {{ ds }}</code></td>
 </tr>
 <tr>
 <td>Gold</td>
-<td><code>src/spark/silver_to_gold.py</code></td>
-<td><a href="../gold/">Gold</a></td>
+<td><code>src/spark/silver_to_gold.py --date {{ ds }}</code></td>
 </tr>
 <tr>
 <td>Validação</td>
-<td><code>src/spark/validar_gold.py</code></td>
-<td><a href="../gold/">Gold</a></td>
+<td><code>src/spark/validar_gold.py --date {{ ds }}</code></td>
 </tr>
 <tr>
-<td>Postgres</td>
-<td><code>src/spark/gold_to_postgres.py</code></td>
-<td><a href="../gold/">Gold</a></td>
+<td>Postgres destino</td>
+<td><code>src/serving/gold_to_postgres.py</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="visualizacao-da-documentacao">Visualização da documentação</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pip<span class="w"> </span>install<span class="w"> </span>mkdocs-material
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>mkdocs<span class="w"> </span>serve<span class="w">   </span><span class="c1"># http://127.0.0.1:8000</span>
+<h2 id="parar-o-ambiente">Parar o ambiente</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>down
+</code></pre></div>
+<p>Para remover também os volumes do MinIO, Airflow e Metabase:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>down<span class="w"> </span>-v
 </code></pre></div>
 
 

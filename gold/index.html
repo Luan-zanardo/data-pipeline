@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gold-modelagem-carga-incremental-e-virtualizacao-etapa-5" class="md-skip">
+        <a href="#gold-modelagem-carga-incremental-e-serving-etapa-5" class="md-skip">
           Ir para o conteúdo
         </a>
       
@@ -811,9 +811,27 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#carga-incremental-checkpoint" class="md-nav__link">
+  <a href="#dim_data" class="md-nav__link">
     <span class="md-ellipsis">
-      Carga incremental (checkpoint)
+      dim_data
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dim_cliente-e-dim_produto" class="md-nav__link">
+    <span class="md-ellipsis">
+      dim_cliente e dim_produto
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fato_vendas" class="md-nav__link">
+    <span class="md-ellipsis">
+      fato_vendas
     </span>
   </a>
   
@@ -825,18 +843,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#gold-postgres-virtualizacao" class="md-nav__link">
+  <a href="#validacao-da-gold" class="md-nav__link">
     <span class="md-ellipsis">
-      Gold → Postgres (virtualização)
+      Validação da Gold
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#validacao-da-gold" class="md-nav__link">
+  <a href="#gold-postgresql-de-destino" class="md-nav__link">
     <span class="md-ellipsis">
-      Validação da Gold
+      Gold → PostgreSQL de destino
     </span>
   </a>
   
@@ -950,71 +968,83 @@
   
 
 
-<h1 id="gold-modelagem-carga-incremental-e-virtualizacao-etapa-5">Gold: Modelagem, Carga Incremental e Virtualização (Etapa 5)</h1>
-<p>A camada Gold transforma a Silver num <strong>modelo dimensional (esquema estrela)</strong>
-pronto para análise, com <strong>carga incremental</strong> e <strong>histórico (SCD2)</strong>, e depois
-<strong>virtualiza</strong> os dados em um Postgres de destino para o Metabase.</p>
-<p>Os scripts ficam em <code>src/spark/</code> e usam Delta Lake. A raiz do Data Lake vem de
-<code>DATALAKE_PATH</code> (padrão: <code>datalake</code>).</p>
+<h1 id="gold-modelagem-carga-incremental-e-serving-etapa-5">Gold: Modelagem, Carga Incremental e Serving (Etapa 5)</h1>
+<p>A camada Gold é construída por <code>src/spark/silver_to_gold.py</code>, a partir das
+tabelas Silver em Delta Lake.</p>
+<p>A raiz usada pelos scripts é <code>s3a://&lt;DATALAKE_BUCKET&gt;</code>, com <code>datalake</code> como
+padrão.</p>
 <h2 id="silver-gold">Silver → Gold</h2>
-<p>Script:
-<a href="https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/silver_to_gold.py"><code>src/spark/silver_to_gold.py</code></a></p>
-<p>Constrói, nesta ordem, as tabelas do
-<a href="../modelo-dados/#modelo-dimensional-gold">modelo dimensional</a>:</p>
+<p>Script: <code>src/spark/silver_to_gold.py</code></p>
+<p>No fluxo da DAG, ele é chamado com:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>src/spark/silver_to_gold.py<span class="w"> </span>--date<span class="w"> </span>YYYY-MM-DD
+</code></pre></div>
+<p>O argumento <code>--date</code> é obrigatório pela CLI, mas o script atual lê as tabelas
+Silver completas e usa checkpoint próprio na fato.</p>
+<p>Tabelas criadas:</p>
 <ul>
-<li><strong><code>dim_data</code></strong> — dimensão de calendário gerada entre a menor e a maior
-  <code>data_pedido</code> da Silver. Sobrescrita a cada execução (<code>overwrite</code>).</li>
-<li><strong><code>dim_cliente</code></strong> e <strong><code>dim_produto</code></strong> — dimensões <strong>SCD Tipo 2</strong>
-  (histórico). A cada execução:<ol>
-<li>calcula um <code>hash_scd</code> (SHA-256) dos atributos versionados;</li>
-<li>fecha as versões vigentes que mudaram (<code>is_current = false</code>,
-   preenche <code>valido_ate</code>);</li>
-<li>insere as versões novas/alteradas com <code>is_current = true</code> e nova
-   <em>surrogate key</em>.</li>
-</ol>
-</li>
-<li><strong><code>fato_vendas</code></strong> — fato no grão de <strong>item de pedido</strong>, com <strong>carga
-  incremental por checkpoint</strong> (ver abaixo). Liga-se às dimensões pelas
-  <em>surrogate keys</em> vigentes (<code>is_current = true</code>).</li>
+<li><code>dim_data</code></li>
+<li><code>dim_cliente</code></li>
+<li><code>dim_produto</code></li>
+<li><code>fato_vendas</code></li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>src/spark/silver_to_gold.py
-</code></pre></div>
-<h3 id="carga-incremental-checkpoint">Carga incremental (checkpoint)</h3>
-<p>A <code>fato_vendas</code> não reprocessa tudo a cada execução. O script mantém um
-checkpoint Delta em <code>gold/_checkpoints/fato_vendas</code> com o maior <code>data_pedido</code>
-já processado (<code>last_value</code>). Em execuções seguintes, apenas pedidos com
-<code>data_pedido &gt; last_value</code> entram, e um <code>left_anti</code> por <code>id_pedido_item</code> garante
-que nada seja inserido em duplicidade. Isso torna a carga <strong>idempotente</strong>.</p>
-<h2 id="gold-postgres-virtualizacao">Gold → Postgres (virtualização)</h2>
-<p>Script:
-<a href="https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/gold_to_postgres.py"><code>src/spark/gold_to_postgres.py</code></a></p>
-<p>Lê as tabelas Delta da Gold e as grava em um <strong>Postgres de destino via JDBC</strong>,
-disponibilizando o modelo dimensional para o Metabase. Para as dimensões
-SCD2 (<code>dim_cliente</code>, <code>dim_produto</code>), envia apenas os registros vigentes
-(<code>is_current = true</code>).</p>
-<p>Requer as variáveis <code>DEST_DB_*</code> configuradas no <code>.env</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>src/spark/gold_to_postgres.py
-</code></pre></div>
-<p>O driver JDBC do Postgres é baixado automaticamente via
-<code>spark.jars.packages</code> (<code>org.postgresql:postgresql:42.7.4</code>).</p>
+<h3 id="dim_data"><code>dim_data</code></h3>
+<p>Criada a partir das datas distintas de <code>pedidos.data_pedido</code>.</p>
+<p>Colunas principais:</p>
+<ul>
+<li><code>data</code></li>
+<li><code>sk_data</code>, calculada como <code>yyyyMMdd</code></li>
+</ul>
+<p>A dimensão é sobrescrita a cada execução.</p>
+<h3 id="dim_cliente-e-dim_produto"><code>dim_cliente</code> e <code>dim_produto</code></h3>
+<p>As dimensões implementam SCD Tipo 2 com colunas de controle:</p>
+<ul>
+<li><code>is_current</code></li>
+<li><code>start_date</code></li>
+<li><code>end_date</code></li>
+</ul>
+<p>Na primeira carga, o script grava a dimensão a partir da tabela Silver e renomeia
+a chave natural:</p>
+<ul>
+<li><code>usuarios.id</code> → <code>dim_cliente.id_cliente</code></li>
+<li><code>produtos.id</code> → <code>dim_produto.id_produto</code></li>
+</ul>
+<p>Em cargas seguintes, compara atributos selecionados:</p>
+<ul>
+<li><code>dim_cliente</code>: <code>nome</code>, <code>email</code></li>
+<li><code>dim_produto</code>: <code>nome</code>, <code>descricao</code>, <code>preco</code></li>
+</ul>
+<p>Quando encontra registro novo ou alterado, expira a versão vigente e insere uma
+nova versão.</p>
+<h3 id="fato_vendas"><code>fato_vendas</code></h3>
+<p>A fato é construída a partir de:</p>
+<ul>
+<li><code>pedidos</code></li>
+<li><code>pedido_itens</code></li>
+</ul>
+<p>O script filtra <code>pedidos.data_pedido</code> maior que o checkpoint salvo em
+<code>gold/_checkpoints/fato_vendas</code>. Depois faz join com <code>pedido_itens</code> e grava em
+<code>gold/fato_vendas</code> com modo <code>append</code>.</p>
+<p>O checkpoint grava a coluna <code>last_processed_date</code>.</p>
+<p>A fato atual contém os campos vindos de <code>pedidos</code> e <code>pedido_itens</code>, além dos
+metadados herdados das camadas anteriores.</p>
 <h2 id="validacao-da-gold">Validação da Gold</h2>
-<p>Script:
-<a href="https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/validar_gold.py"><code>src/spark/validar_gold.py</code></a></p>
-<p>Imprime métricas de controle e valida as regras da etapa: existência das
-tabelas, <strong>unicidade de registros vigentes</strong> nas dimensões SCD2 (não pode haver
-duas versões <code>is_current</code> para a mesma chave natural) e existência do checkpoint
-da fato. Falha com código de saída ≠ 0 se algo estiver errado.</p>
-<p>Para comprovar <strong>idempotência</strong>, salve um snapshot, rode o <code>silver_to_gold</code>
-novamente e compare:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># 1. snapshot dos counts atuais</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>python<span class="w"> </span>src/spark/validar_gold.py<span class="w"> </span>--save-snapshot<span class="w"> </span>snapshot.json
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># 2. reprocessa a Gold (não deve duplicar nada)</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>python<span class="w"> </span>src/spark/silver_to_gold.py
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># 3. compara — os counts devem bater</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>python<span class="w"> </span>src/spark/validar_gold.py<span class="w"> </span>--compare-snapshot<span class="w"> </span>snapshot.json
+<p>Script: <code>src/spark/validar_gold.py</code></p>
+<p>Validações implementadas:</p>
+<ul>
+<li>chaves nulas em <code>fato_vendas</code> (<code>pedido_id</code>, <code>produto_id</code>, <code>usuario_id</code>);</li>
+<li>vendas sem cliente vigente correspondente;</li>
+<li>vendas sem produto vigente correspondente;</li>
+<li>quantidade menor ou igual a zero;</li>
+<li>preço negativo.</li>
+</ul>
+<p>Depois das validações, o script tenta executar otimizações Delta nas tabelas
+Gold.</p>
+<h2 id="gold-postgresql-de-destino">Gold → PostgreSQL de destino</h2>
+<p>No fluxo orquestrado, a carga para o banco de destino usa:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>src/serving/gold_to_postgres.py
 </code></pre></div>
+<p>Esse job lê as tabelas Delta da Gold e grava no PostgreSQL definido por
+<code>DEST_DB_*</code>. Para dimensões com <code>is_current</code>, envia apenas registros vigentes.</p>
 
 
 
