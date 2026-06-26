@@ -7,19 +7,19 @@ edit_uri: edit/main/docs/
 theme:
   name: material
   palette:
-    # Palette toggle for light mode
+    # Toggle de tema claro/escuro.
     - scheme: default
       toggle:
         icon: material/brightness-7
-        name: Switch to dark mode
+        name: Alternar para modo escuro
 
-    # Palette toggle for dark mode
     - scheme: slate
       toggle:
         icon: material/brightness-4
-        name: Switch to light mode
+        name: Alternar para modo claro
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - toc.integrate
     - navigation.top
@@ -28,21 +28,30 @@ theme:
     - content.tabs.link
     - content.code.annotation
     - content.code.copy
-  language: en
+  language: pt
   icon:
     repo: fontawesome/brands/github-alt
 
-# Navigation structure based on the documentation files created
 nav:
-  - 'Início': 'index.md'
-  - 'Arquitetura': 'arquitetura.md'
-  - 'Fluxo do Pipeline': 'pipeline.md'
-  - 'Modelo Dimensional': 'modelo_dimensional.md'
-  - 'Setup e Execução': 'setup.md'
+  - Início: index.md
+  - Projeto:
+      - Etapas do Projeto: etapas.md
+      - Arquitetura: arquitetura.md
+      - Fluxo do Pipeline: pipeline.md
+      - Modelo de Dados: modelo-dados.md
+  - Execução:
+      - Setup e Execução: setup.md
+      - Como Executar: como-executar.md
+  - Pipeline:
+      - Geração de Massa: geracao-massa.md
+      - Orquestração e Landing: orquestracao.md
+      - Bronze e Silver: bronze-silver.md
+      - Gold: gold.md
+  - Visualização:
+      - Metabase: metabase.md
 
-# Specs internos de design não fazem parte do site publicado.
-exclude_docs: |
-  superpowers/
+extra_css:
+  - stylesheets/extra.css
 
 # Extensions
 markdown_extensions:
@@ -52,7 +61,11 @@ markdown_extensions:
   - pymdownx.snippets
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.mark
   - attr_list
   - md_in_html

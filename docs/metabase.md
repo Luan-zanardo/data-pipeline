@@ -2,8 +2,7 @@
 
 A camada de visualização do projeto usa o **Metabase self-host**, rodando em
 Docker junto do restante do stack. O Metabase consome o **Postgres de destino**
-(Gold virtualizada, produzida pelo `gold_to_postgres.py`) e exibe os dashboards
-de análise sobre o modelo dimensional.
+carregado por `src/serving/gold_to_postgres.py`.
 
 ```mermaid
 flowchart LR
@@ -31,8 +30,6 @@ Os dados do Metabase persistem no volume `metabase-db-data`.
 ## Subindo o Metabase
 
 ```bash
-docker compose up -d metabase
-# ou suba o stack inteiro:
 docker compose up -d
 ```
 
@@ -81,7 +78,7 @@ docker compose logs -f metabase-init
 
 !!! note "Pré-requisito de dados"
     O destino precisa estar populado para os cards exibirem dados. Rode antes o
-    `src/spark/gold_to_postgres.py` (ver [Gold](gold.md)). Os cards são criados
+    fluxo da DAG até `gold_to_serving_layer` (ver [Gold](gold.md)). Os cards são criados
     de qualquer forma; só ficam vazios até a Gold ser virtualizada.
 
 ### Reconfigurar manualmente (se necessário)
@@ -98,7 +95,7 @@ Ou ajuste o data source / dashboards diretamente pela UI em
 
 ## Montando os dashboards
 
-Com o data source conectado, construa as análises sobre o esquema estrela:
+Com o data source conectado, é possível construir análises sobre as tabelas Gold:
 
 - **Vendas por período** — `fato_vendas` agregada por `dim_data`.
 - **Top clientes / produtos** — `fato_vendas` cruzada com `dim_cliente` e

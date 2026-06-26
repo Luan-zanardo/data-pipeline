@@ -1,5 +1,5 @@
 # Documentação
-mkdocs-material
+mkdocs-material==9.6.23
 
 # Geração de massa Mock (Etapa 2)
 faker

@@ -21,18 +21,18 @@ O pipeline é orquestrado por uma única DAG no Airflow (`pipeline_completo`) e 
     4.  Salva os dados no formato **Delta Lake**, mantendo o esquema original.
 -   **Formato:** Delta Lake
 
-## 3. Camada Silver (Cleaned & Conformed)
+## 3. Camada Silver
 
--   **Objetivo:** Aplicar regras de negócio, limpeza, normalização e enriquecimento dos dados.
+-   **Objetivo:** Deduplicar registros por `id` e aplicar as padronizações/casts implementados no script.
 -   **Processo:**
     1.  O script Spark `bronze_to_silver.py` é executado.
     2.  Ele lê as tabelas da camada Bronze.
     3.  Aplica as seguintes transformações:
-        -   **Limpeza:** Remove espaços em branco, padroniza strings (ex: `UPPERCASE`).
-        -   **Tratamento de Nulos:** Remove ou preenche valores nulos onde aplicável.
-        -   **Deduplicação:** Remove registros duplicados.
-        -   **Tipagem de Dados:** Garante que todas as colunas estejam com os tipos corretos (ex: `string` para `timestamp`, `decimal`).
-    4.  Salva os dados limpos e conformados no formato **Delta Lake**.
+        -   **Deduplicação:** mantém o registro mais recente por `id`.
+        -   **Usuários:** aplica `trim` e `lower` em `email`.
+        -   **Produtos:** converte `preco` para `decimal(10,2)`.
+        -   **Pedidos:** converte `data_pedido` para timestamp.
+    4.  Salva ou atualiza as tabelas Silver em **Delta Lake** usando `MERGE` por `id`.
 -   **Formato:** Delta Lake
 
 ## 4. Camada Gold (Curated & Modeled)
@@ -41,9 +41,9 @@ O pipeline é orquestrado por uma única DAG no Airflow (`pipeline_completo`) e 
 -   **Processo:**
     1.  O script Spark `silver_to_gold.py` é acionado.
     2.  Ele lê as tabelas limpas da camada Silver.
-    3.  Constrói um **modelo dimensional** com tabelas de Fato e Dimensão.
+    3.  Constrói as tabelas `dim_data`, `dim_cliente`, `dim_produto` e `fato_vendas`.
     4.  **Carga Incremental:**
-        -   **Dimensões:** Utiliza a técnica **SCD (Slowly Changing Dimension) Tipo 2** para manter o histórico das alterações. O comando `merge` do Delta Lake é usado para inserir novos registros e expirar os antigos.
-        -   **Fatos:** Utiliza um sistema de **checkpoint** para processar apenas os dados novos desde a última execução, tornando a carga mais eficiente.
+        -   **Dimensões:** `dim_cliente` e `dim_produto` usam colunas `is_current`, `start_date` e `end_date`.
+        -   **Fatos:** `fato_vendas` usa checkpoint por `data_pedido`.
     5.  Salva as tabelas Fato e Dimensão no formato **Delta Lake**.
 -   **Formato:** Delta Lake

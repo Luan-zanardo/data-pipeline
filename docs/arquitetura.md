@@ -5,7 +5,7 @@
     -   **Origem:** Simula o banco de dados transacional de um sistema de produção (OLTP), como um e-commerce. É populado com dados falsos (Faker) para simular um ambiente realista.
     -   **Destino:** Atua como a **Camada de Servir (Serving Layer)**, recebendo os dados já modelados da camada Gold para serem consumidos pelas ferramentas de BI.
 
--   **Apache Airflow:** Atua como o cérebro do pipeline. É o orquestrador responsável por agendar, executar e monitorar as tarefas (DAGs) de forma automática e resiliente, sem depender de agendadores do sistema operacional.
+-   **Apache Airflow:** Atua como o orquestrador responsável por executar e monitorar a DAG do pipeline, sem depender de agendadores do sistema operacional.
 
 -   **MinIO (Data Lake):** Um serviço de object storage de alta performance, compatível com a API do Amazon S3. Ele armazena os dados em todas as camadas da arquitetura medalhão.
 
@@ -23,10 +23,10 @@
 
 3.  **Landing → Bronze:** O Spark lê os dados brutos da Landing, adiciona metadados de auditoria e os converte para o formato **Delta Lake** na camada **Bronze**.
 
-4.  **Bronze → Silver:** O Spark aplica regras de limpeza, tratamento de nulos, padronização e deduplicação, gravando os dados de qualidade na camada **Silver** (Delta Lake).
+4.  **Bronze → Silver:** O Spark deduplica por `id`, aplica padronizações/casts pontuais e grava a camada **Silver** (Delta Lake).
 
-5.  **Silver → Gold:** O Spark lê os dados da Silver e constrói o **modelo dimensional (Star Schema)**. As dimensões são carregadas com lógica **SCD Tipo 2**, e a tabela de fatos é carregada de forma **incremental** usando checkpoints. Os dados são salvos na camada **Gold** (Delta Lake).
+5.  **Silver → Gold:** O Spark lê os dados da Silver e cria `dim_data`, `dim_cliente`, `dim_produto` e `fato_vendas`. As dimensões de cliente/produto usam lógica **SCD Tipo 2**, e a fato é carregada de forma incremental usando checkpoint.
 
 6.  **Gold → Camada de Servir:** Os dados modelados da camada Gold são carregados em um banco de dados PostgreSQL de destino, otimizando o acesso para ferramentas de BI.
 
-7.  **Visualização:** O **Metabase** se conecta ao PostgreSQL de destino para consumir os dados e exibir os KPIs e métricas no dashboard final.
+7.  **Visualização:** O **Metabase** se conecta ao PostgreSQL de destino e recebe um dashboard inicial provisionado por `metabase-init`.
