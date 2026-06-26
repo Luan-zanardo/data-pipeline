@@ -107,7 +107,73 @@ cria 10 tabelas e insere 10.000 linhas em cada uma quando a origem está vazia.
 | produto_id | inteiro | Referência ao produto |
 | quantidade | inteiro | Quantidade no carrinho |
 
-## Modelo Gold implementado
+## MER da origem
+
+O banco de origem representa o domínio transacional do e-commerce. O
+`src/setup.py` cria as chaves primárias; as relações abaixo são definidas pelas
+colunas de referência usadas na massa gerada. O script não declara constraints
+`FOREIGN KEY` no PostgreSQL.
+
+```mermaid
+erDiagram
+    categorias ||--o{ produtos : "categoria_id"
+    usuarios ||--o{ pedidos : "usuario_id"
+    usuarios ||--o{ enderecos : "usuario_id"
+    usuarios ||--o{ avaliacoes : "usuario_id"
+    usuarios ||--o{ carrinho : "usuario_id"
+    pedidos ||--o{ pedido_itens : "pedido_id"
+    pedidos ||--o{ pagamentos : "pedido_id"
+    pedidos ||--o{ envio : "pedido_id"
+    produtos ||--o{ pedido_itens : "produto_id"
+    produtos ||--o{ avaliacoes : "produto_id"
+    produtos ||--o{ carrinho : "produto_id"
+    enderecos ||--o{ envio : "endereco_id"
+
+    categorias {
+        int id PK
+    }
+    usuarios {
+        int id PK
+    }
+    produtos {
+        int id PK
+        int categoria_id
+    }
+    pedidos {
+        int id PK
+        int usuario_id
+    }
+    enderecos {
+        int id PK
+        int usuario_id
+    }
+    pedido_itens {
+        int id PK
+        int pedido_id
+        int produto_id
+    }
+    pagamentos {
+        int id PK
+        int pedido_id
+    }
+    envio {
+        int id PK
+        int pedido_id
+        int endereco_id
+    }
+    avaliacoes {
+        int id PK
+        int usuario_id
+        int produto_id
+    }
+    carrinho {
+        int id PK
+        int usuario_id
+        int produto_id
+    }
+```
+
+## MER do destino (Modelo Gold)
 
 O script `src/spark/silver_to_gold.py` gera três dimensões e uma fato.
 
