@@ -1,73 +1,73 @@
 # Transformação Spark: Bronze e Silver (Etapa 4)
 
-As transformações entre camadas são feitas **obrigatoriamente com Apache Spark
-(PySpark)** e gravadas em **Delta Lake**. Os scripts ficam em `src/spark/` e
-descobrem as tabelas dinamicamente — não há lista hardcoded.
+As transformações ficam em `src/spark/` e usam PySpark com Delta Lake. No fluxo
+orquestrado, os scripts são executados pela DAG `pipeline_completo` via
+`SparkSubmitOperator`.
 
-Ambos aceitam o argumento opcional `--date YYYY-MM-DD` para processar apenas uma
-data de ingestão e leem a raiz do Data Lake da variável `DATALAKE_PATH`
-(padrão: `datalake`).
+A raiz do Data Lake é montada como `s3a://<DATALAKE_BUCKET>`, com
+`DATALAKE_BUCKET=datalake` como padrão.
 
 ## Landing → Bronze
 
-Script:
-[`src/spark/landing_to_bronze.py`](https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/landing_to_bronze.py)
+Script: `src/spark/landing_to_bronze.py`
 
-A Bronze é a **cópia fiel padronizada** da Landing: nenhum dado é descartado,
-apenas se adiciona rastreabilidade.
+Entrada:
 
-- Lê os CSVs da Landing (`header`, `inferSchema`), respeitando o
-  particionamento `ingestion_date=...`.
-- Adiciona colunas de **auditoria**:
-    - `_input_file_name` — arquivo de origem do registro.
-    - `_loaded_at` — timestamp do carregamento.
-- Grava em **Delta Lake**, particionado por `ingestion_date`, em modo `append`
-  (mantém o histórico de todas as ingestões).
+- argumento obrigatório `--date YYYY-MM-DD`;
+- manifesto `s3a://datalake/landing/_manifests/ingestion_<data>.json`;
+- CSVs da Landing em
+  `s3a://datalake/landing/<tabela>/ingestion_date=<data>/*.csv`.
 
-```bash
-python src/spark/landing_to_bronze.py            # todas as datas
-python src/spark/landing_to_bronze.py --date 2026-06-23
-```
+O script lê a lista de tabelas a partir do manifesto da ingestão. Para cada
+tabela, ele:
+
+- lê os CSVs com `header=true` e `inferSchema=true`;
+- adiciona `_input_file_name`;
+- adiciona `_loaded_at`;
+- adiciona `ingestion_date`;
+- grava em Delta Lake em `s3a://datalake/bronze/<tabela>`;
+- particiona a escrita por `ingestion_date`;
+- usa modo `append`.
 
 ## Bronze → Silver
 
-Script:
-[`src/spark/bronze_to_silver.py`](https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/bronze_to_silver.py)
+Script: `src/spark/bronze_to_silver.py`
 
-A Silver contém os dados **limpos, tipados e deduplicados**, prontos para
-modelagem.
+Entrada:
 
-1. **Deduplicação** — para cada `id`, mantém o registro mais recente
-   (`row_number()` ordenado por `_loaded_at` decrescente).
-2. **Tipagem e padronização por tabela** — cast de tipos (inteiros, decimais,
-   timestamps), `trim` de textos, `lower` em e-mails, `upper` em status/UF.
-3. **Regras de qualidade (filtros)** — descarta registros inválidos, por
-   exemplo:
-    - `usuarios`: `id` não nulo e `nome` não vazio;
-    - `produtos`: `preco >= 0`;
-    - `pedido_itens` / `carrinho`: `quantidade > 0`;
-    - `pagamentos`: `quantia >= 0`;
-    - `avaliacoes`: nota entre 1 e 5.
-4. **Carga via MERGE (upsert)** — usa `DeltaTable.merge` por `id`
-   (`whenMatchedUpdateAll` / `whenNotMatchedInsertAll`), mantendo a Silver
-   sempre com o estado mais atual. Adiciona o metadado `_updated_at`.
+- argumento obrigatório `--date YYYY-MM-DD`;
+- tabelas Bronze em `s3a://datalake/bronze/<tabela>`.
 
-```bash
-python src/spark/bronze_to_silver.py             # todas as datas
-python src/spark/bronze_to_silver.py --date 2026-06-23
-```
-
-São esses filtros que **eliminam os dados sujos** injetados de propósito pelo
-gerador de massa, comprovando o tratamento de qualidade.
-
-## Delta Lake
-
-As Bronze e Silver usam o formato **Delta Lake**, que traz transações ACID,
-suporte nativo a `MERGE`/upsert e *time travel*. A SparkSession é configurada em
-cada script com as extensões do Delta:
+O script processa explicitamente esta lista de tabelas:
 
 ```python
-.config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-.config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
-.config("spark.jars.packages", "io.delta:delta-spark_2.12:3.2.0")
+[
+    "produtos",
+    "categorias",
+    "envio",
+    "usuarios",
+    "avaliacoes",
+    "carrinho",
+    "pagamentos",
+    "pedidos",
+    "enderecos",
+    "pedido_itens",
+]
 ```
+
+Transformações implementadas:
+
+- deduplicação por `id`, mantendo o registro com `_loaded_at` mais recente;
+- `usuarios.email`: `trim` + `lower`;
+- `produtos.preco`: cast para `decimal(10,2)`;
+- `pedidos.data_pedido`: cast para timestamp;
+- inclusão de `_updated_at`.
+
+Escrita:
+
+- se a tabela Silver ainda não existe, grava em Delta com `overwrite`;
+- se já existe, usa `DeltaTable.merge` por `id`, com
+  `whenMatchedUpdateAll` e `whenNotMatchedInsertAll`.
+
+O script atual não implementa filtros de qualidade para descartar preços
+negativos, quantidades inválidas, notas fora do intervalo ou nulos.

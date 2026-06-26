@@ -1,39 +1,45 @@
 # Geração de Massa (Etapa 2)
 
-A origem dos dados é simulada com **Python + Faker**. O script
-[`generate_mock_landing.py`](https://github.com/Luan-zanardo/data-pipeline/blob/main/generate_mock_landing.py)
-gera as 10 tabelas do e-commerce com **10.000 linhas cada** e datas
-distribuídas pelos **últimos 3 anos**, gravando os CSVs diretamente na camada
-Landing local.
+A massa de dados é criada por `src/setup.py`. Esse script é chamado pela tarefa
+`setup_ambiente_origem` da DAG `pipeline_completo`.
 
-> Este script é o atalho para rodar o pipeline **offline**, sem depender do
-> banco de origem nem do Airflow. Em produção, a ingestão da Landing vem do
-> Postgres de origem via Airflow (ver [Orquestração e Landing](orquestracao.md)).
+## O que o script faz
 
-## O que ele gera
+- Conecta no PostgreSQL de origem usando `SOURCE_DB_*`.
+- Verifica se a tabela `pedidos` existe e já possui registros.
+- Se a origem já estiver populada, não altera os dados.
+- Se estiver vazia, cria 10 tabelas de e-commerce e insere 10.000 linhas em
+  cada uma.
+- Usa `Faker('pt_BR')` para nomes, e-mails, endereços e textos.
+- Distribui datas aleatórias nos últimos 3 anos.
 
-- **10 tabelas**: `categorias`, `usuarios`, `produtos`, `pedidos`,
-  `enderecos`, `pedido_itens`, `pagamentos`, `envio`, `avaliacoes`, `carrinho`.
-- **10.000 linhas por tabela**, com `Faker('pt_BR')` (nomes, e-mails, endereços
-  brasileiros).
-- **Histórico de 3 anos**: as colunas de data são sorteadas no intervalo
-  `[hoje − 3 anos, hoje]`.
-- **Dados sujos propositais** nas últimas linhas de cada tabela (IDs
-  duplicados, nulos, strings mal formatadas, valores negativos), para validar
-  a limpeza na Silver — ver [Modelo de Dados](modelo-dados.md#dados-sujos-propositais).
+## Tabelas criadas
 
-## Como executar
+- `categorias`
+- `usuarios`
+- `produtos`
+- `pedidos`
+- `enderecos`
+- `pedido_itens`
+- `pagamentos`
+- `envio`
+- `avaliacoes`
+- `carrinho`
+
+## Observação sobre qualidade dos dados
+
+O script atual não injeta dados sujos de propósito. A etapa Silver ainda faz
+deduplicação por `id` e algumas padronizações/casts, mas a documentação não deve
+assumir a existência de registros inválidos artificiais.
+
+## Execução
+
+No fluxo normal, não é necessário chamar esse arquivo manualmente: a DAG executa
+o setup antes da ingestão.
+
+Para rodar fora do Airflow, o ambiente precisa ter as dependências Python e as
+variáveis `SOURCE_DB_*` configuradas:
 
 ```bash
-pip install faker          # ou: pip install -r requirements.txt
-python generate_mock_landing.py
+python src/setup.py
 ```
-
-A saída segue o mesmo layout particionado da Landing oficial:
-
-```
-datalake/landing/<tabela>/ingestion_date=<YYYY-MM-DD>/<tabela>.csv
-```
-
-Com os CSVs no lugar, siga direto para a transformação Spark em
-[Bronze e Silver](bronze-silver.md).

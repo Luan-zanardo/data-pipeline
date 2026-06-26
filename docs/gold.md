@@ -1,84 +1,102 @@
-# Gold: Modelagem, Carga Incremental e Virtualização (Etapa 5)
+# Gold: Modelagem, Carga Incremental e Serving (Etapa 5)
 
-A camada Gold transforma a Silver num **modelo dimensional (esquema estrela)**
-pronto para análise, com **carga incremental** e **histórico (SCD2)**, e depois
-**virtualiza** os dados em um Postgres de destino para o Metabase.
+A camada Gold é construída por `src/spark/silver_to_gold.py`, a partir das
+tabelas Silver em Delta Lake.
 
-Os scripts ficam em `src/spark/` e usam Delta Lake. A raiz do Data Lake vem de
-`DATALAKE_PATH` (padrão: `datalake`).
+A raiz usada pelos scripts é `s3a://<DATALAKE_BUCKET>`, com `datalake` como
+padrão.
 
 ## Silver → Gold
 
-Script:
-[`src/spark/silver_to_gold.py`](https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/silver_to_gold.py)
+Script: `src/spark/silver_to_gold.py`
 
-Constrói, nesta ordem, as tabelas do
-[modelo dimensional](modelo-dados.md#modelo-dimensional-gold):
-
-- **`dim_data`** — dimensão de calendário gerada entre a menor e a maior
-  `data_pedido` da Silver. Sobrescrita a cada execução (`overwrite`).
-- **`dim_cliente`** e **`dim_produto`** — dimensões **SCD Tipo 2**
-  (histórico). A cada execução:
-    1. calcula um `hash_scd` (SHA-256) dos atributos versionados;
-    2. fecha as versões vigentes que mudaram (`is_current = false`,
-       preenche `valido_ate`);
-    3. insere as versões novas/alteradas com `is_current = true` e nova
-       *surrogate key*.
-- **`fato_vendas`** — fato no grão de **item de pedido**, com **carga
-  incremental por checkpoint** (ver abaixo). Liga-se às dimensões pelas
-  *surrogate keys* vigentes (`is_current = true`).
+No fluxo da DAG, ele é chamado com:
 
 ```bash
-python src/spark/silver_to_gold.py
+python src/spark/silver_to_gold.py --date YYYY-MM-DD
 ```
 
-### Carga incremental (checkpoint)
+O argumento `--date` é obrigatório pela CLI, mas o script atual lê as tabelas
+Silver completas e usa checkpoint próprio na fato.
 
-A `fato_vendas` não reprocessa tudo a cada execução. O script mantém um
-checkpoint Delta em `gold/_checkpoints/fato_vendas` com o maior `data_pedido`
-já processado (`last_value`). Em execuções seguintes, apenas pedidos com
-`data_pedido > last_value` entram, e um `left_anti` por `id_pedido_item` garante
-que nada seja inserido em duplicidade. Isso torna a carga **idempotente**.
+Tabelas criadas:
 
-## Gold → Postgres (virtualização)
+- `dim_data`
+- `dim_cliente`
+- `dim_produto`
+- `fato_vendas`
 
-Script:
-[`src/spark/gold_to_postgres.py`](https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/gold_to_postgres.py)
+### `dim_data`
 
-Lê as tabelas Delta da Gold e as grava em um **Postgres de destino via JDBC**,
-disponibilizando o modelo dimensional para o Metabase. Para as dimensões
-SCD2 (`dim_cliente`, `dim_produto`), envia apenas os registros vigentes
-(`is_current = true`).
+Criada a partir das datas distintas de `pedidos.data_pedido`.
 
-Requer as variáveis `DEST_DB_*` configuradas no `.env`:
+Colunas principais:
 
-```bash
-python src/spark/gold_to_postgres.py
-```
+- `data`
+- `sk_data`, calculada como `yyyyMMdd`
 
-O driver JDBC do Postgres é baixado automaticamente via
-`spark.jars.packages` (`org.postgresql:postgresql:42.7.4`).
+A dimensão é sobrescrita a cada execução.
+
+### `dim_cliente` e `dim_produto`
+
+As dimensões implementam SCD Tipo 2 com colunas de controle:
+
+- `is_current`
+- `start_date`
+- `end_date`
+
+Na primeira carga, o script grava a dimensão a partir da tabela Silver e renomeia
+a chave natural:
+
+- `usuarios.id` → `dim_cliente.id_cliente`
+- `produtos.id` → `dim_produto.id_produto`
+
+Em cargas seguintes, compara atributos selecionados:
+
+- `dim_cliente`: `nome`, `email`
+- `dim_produto`: `nome`, `descricao`, `preco`
+
+Quando encontra registro novo ou alterado, expira a versão vigente e insere uma
+nova versão.
+
+### `fato_vendas`
+
+A fato é construída a partir de:
+
+- `pedidos`
+- `pedido_itens`
+
+O script filtra `pedidos.data_pedido` maior que o checkpoint salvo em
+`gold/_checkpoints/fato_vendas`. Depois faz join com `pedido_itens` e grava em
+`gold/fato_vendas` com modo `append`.
+
+O checkpoint grava a coluna `last_processed_date`.
+
+A fato atual contém os campos vindos de `pedidos` e `pedido_itens`, além dos
+metadados herdados das camadas anteriores.
 
 ## Validação da Gold
 
-Script:
-[`src/spark/validar_gold.py`](https://github.com/Luan-zanardo/data-pipeline/blob/main/src/spark/validar_gold.py)
+Script: `src/spark/validar_gold.py`
 
-Imprime métricas de controle e valida as regras da etapa: existência das
-tabelas, **unicidade de registros vigentes** nas dimensões SCD2 (não pode haver
-duas versões `is_current` para a mesma chave natural) e existência do checkpoint
-da fato. Falha com código de saída ≠ 0 se algo estiver errado.
+Validações implementadas:
 
-Para comprovar **idempotência**, salve um snapshot, rode o `silver_to_gold`
-novamente e compare:
+- chaves nulas em `fato_vendas` (`pedido_id`, `produto_id`, `usuario_id`);
+- vendas sem cliente vigente correspondente;
+- vendas sem produto vigente correspondente;
+- quantidade menor ou igual a zero;
+- preço negativo.
 
-```bash
-# 1. snapshot dos counts atuais
-python src/spark/validar_gold.py --save-snapshot snapshot.json
+Depois das validações, o script tenta executar otimizações Delta nas tabelas
+Gold.
 
-# 2. reprocessa a Gold (não deve duplicar nada)
-python src/spark/silver_to_gold.py
+## Gold → PostgreSQL de destino
 
-# 3. compara — os counts devem bater
-python src/spark/validar_gold.py --compare-snapshot snapshot.json
+No fluxo orquestrado, a carga para o banco de destino usa:
+
+```text
+src/serving/gold_to_postgres.py
 ```
+
+Esse job lê as tabelas Delta da Gold e grava no PostgreSQL definido por
+`DEST_DB_*`. Para dimensões com `is_current`, envia apenas registros vigentes.
