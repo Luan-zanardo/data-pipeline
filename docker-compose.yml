@@ -184,6 +184,31 @@ services:
       metabase-db:
         condition: service_healthy
 
+  metabase-init:
+    image: alpine:3.20
+    depends_on:
+      metabase:
+        condition: service_started
+    environment:
+      MB_URL: http://metabase:3000
+      MB_ADMIN_EMAIL: ${MB_ADMIN_EMAIL:-admin@example.com}
+      MB_ADMIN_PASSWORD: ${MB_ADMIN_PASSWORD:-metabaseadmin1}
+      DEST_DB_HOST: ${DEST_DB_HOST}
+      DEST_DB_PORT: ${DEST_DB_PORT:-5432}
+      DEST_DB_NAME: ${DEST_DB_NAME}
+      DEST_DB_USER: ${DEST_DB_USER}
+      DEST_DB_PASSWORD: ${DEST_DB_PASSWORD}
+      DEST_DB_SSLMODE: ${DEST_DB_SSLMODE:-require}
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        apk add --no-cache curl jq >/dev/null
+        sh /scripts/metabase_provision.sh
+    restart: on-failure
+
 volumes:
   airflow-metadata-data:
   minio-data:
