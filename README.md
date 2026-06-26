@@ -19,23 +19,6 @@ Gold em um PostgreSQL de destino e provisiona o Metabase para consumo analítico
 
 ## 🏛️ Arquitetura
 
-```mermaid
-flowchart LR
-    A[(PostgreSQL<br/>origem externa)] -->|Airflow · COPY CSV| B[Landing<br/>CSV bruto no MinIO]
-    B -->|Spark| C[Bronze<br/>Delta Lake]
-    C -->|Spark| D[Silver<br/>Delta Lake]
-    D -->|Spark · SCD2 + checkpoint| E[Gold<br/>Delta Lake]
-    E -->|Spark JDBC| F[(PostgreSQL<br/>destino externo)]
-    F -->|JDBC| G[Metabase<br/>Dashboard]
-
-    subgraph DL[Data Lake · MinIO S3]
-        B
-        C
-        D
-        E
-    end
-```
-
 O `docker-compose.yml` sobe Airflow, MinIO e Metabase. Os bancos PostgreSQL de
 origem e destino são configurados por variáveis `SOURCE_DB_*` e `DEST_DB_*`;
 eles não são criados como serviços locais pelo Compose.
@@ -188,9 +171,9 @@ mkdocs gh-deploy    # publica no GitHub Pages
 - [Faker — Documentação](https://faker.readthedocs.io/)
 
 **Visualização e documentação**
-
-Equipe: Gabriel Minatto, Gabriel Pagnan, Pedro Afonso, Luan, William, Lorenzo, Anderson
-
+                                                                               
 - [Metabase — Documentação](https://www.metabase.com/docs/latest/)
 - [MkDocs — Documentação](https://www.mkdocs.org/)
 - [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/)
+
+Equipe: Gabriel Minatto, Gabriel Pagnan, Pedro Afonso, Luan, William, Lorenzo, Anderson
