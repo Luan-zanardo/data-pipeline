@@ -1,0 +1,3 @@
+# Scripts shell rodam em containers Linux: precisam manter quebras de linha LF
+# mesmo em checkout no Windows (caso contrario o `sh` do Alpine quebra no \r).
+*.sh text eol=lf
