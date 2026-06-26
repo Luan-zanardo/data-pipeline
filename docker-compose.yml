@@ -100,9 +100,34 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # Ajusta a posse/permissao do volume de logs ANTES do Airflow subir.
+  # O Airflow roda como UID 50000 (grupo 0), mas o bind mount ./logs nasce
+  # como root:root 755 num checkout novo — sem escrita para o grupo. Isso fazia
+  # o webserver/scheduler abortarem com PermissionError ao criar subdiretorios
+  # de log (ex.: logs/scheduler/<data>), deixando o :8080 sem resposta.
+  airflow-logs-init:
+    image: alpine:3.20
+    user: "0:0"
+    volumes:
+      - ./logs:/opt/airflow/logs
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /opt/airflow/logs
+        chown -R 50000:0 /opt/airflow/logs
+        chmod -R 775 /opt/airflow/logs
+        echo "Permissoes de /opt/airflow/logs ajustadas (50000:0, 775)."
+    restart: on-failure
+
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
+    depends_on:
+      airflow-metadata:
+        condition: service_healthy
+      airflow-logs-init:
+        condition: service_completed_successfully
     command:
       - -c
       - |
@@ -129,6 +154,8 @@ services:
     depends_on:
       airflow-metadata:
         condition: service_healthy
+      airflow-logs-init:
+        condition: service_completed_successfully
       airflow-init:
         condition: service_completed_successfully
       minio-init:
@@ -141,6 +168,8 @@ services:
     depends_on:
       airflow-metadata:
         condition: service_healthy
+      airflow-logs-init:
+        condition: service_completed_successfully
       airflow-init:
         condition: service_completed_successfully
       minio-init:
